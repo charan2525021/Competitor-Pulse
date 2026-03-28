@@ -1,0 +1,65 @@
+[
+  {
+    "id": "l01",
+    "name": "Sarah Chen",
+    "company": "Stripe",
+    "role": "VP of Engineering",
+    "email": "s.chen@stripe.com",
+    "linkedinUrl": "https://linkedin.com/in/sarahchen",
+    "addedAt": "2026-03-26T13:05:00Z"
+  },
+  {
+    "id": "l02",
+    "name": "Marcus Williams",
+    "company": "Datadog",
+    "role": "VP Engineering, Platform",
+    "email": "m.williams@datadoghq.com",
+    "linkedinUrl": "https://linkedin.com/in/marcuswilliams",
+    "addedAt": "2026-03-26T13:05:00Z"
+  },
+  {
+    "id": "l03",
+    "name": "Priya Patel",
+    "company": "Figma",
+    "role": "VP of Engineering",
+    "email": "priya@figma.com",
+    "linkedinUrl": "https://linkedin.com/in/priyapatel",
+    "addedAt": "2026-03-26T13:06:00Z"
+  },
+  {
+    "id": "l04",
+    "name": "James Rodriguez",
+    "company": "Notion",
+    "role": "VP Engineering",
+    "email": "james.r@notion.so",
+    "linkedinUrl": "https://linkedin.com/in/jamesrodriguez",
+    "addedAt": "2026-03-26T13:06:00Z"
+  },
+  {
+    "id": "l05",
+    "name": "Emily Zhang",
+    "company": "Linear",
+    "role": "Head of Engineering",
+    "email": "emily@linear.app",
+    "linkedinUrl": "https://linkedin.com/in/emilyzhang",
+    "addedAt": "2026-03-26T13:07:00Z"
+  },
+  {
+    "id": "l06",
+    "name": "David Kim",
+    "company": "Vercel",
+    "role": "CTO",
+    "email": "david@vercel.com",
+    "linkedinUrl": "https://linkedin.com/in/davidkim",
+    "addedAt": "2026-03-25T10:30:00Z"
+  },
+  {
+    "id": "l07",
+    "name": "Rachel Torres",
+    "company": "Supabase",
+    "role": "VP Engineering",
+    "email": "rachel@supabase.com",
+    "linkedinUrl": "https://linkedin.com/in/racheltorres",
+    "addedAt": "2026-03-25T10:31:00Z"
+  }
+]
