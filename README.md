@@ -6,7 +6,7 @@
 
 ## 🌟 What is this?
 
-CompetitorPulse solves a real business problem: companies spend **10–20 hours/week** ⏳ manually monitoring competitors — checking pricing pages, reading blog posts, tracking job postings, and monitoring review sites.
+CompetitorPulse solves a real business problem: companies spend **10–20 hours/week** ⏳ manually monitoring competitors — checking pricing pages, form filling, reading blog posts, tracking job postings, and monitoring review sites.
 
 🔥 This tool automates all of that using an AI web agent that navigates real websites.
 
