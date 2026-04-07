@@ -200,7 +200,6 @@ export function streamStrategyLogs(req: Request, res: Response) {
       res.end();
     }
   }, 150);
-
   req.on("close", () => clearInterval(interval));
 }
 
