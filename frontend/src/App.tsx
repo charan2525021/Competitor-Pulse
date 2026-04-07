@@ -8,8 +8,11 @@ import { FormFiller } from "./pages/FormFiller";
 import type { FormProfile, FormFillRecord } from "./pages/FormFiller";
 import { IntelPage } from "./pages/IntelPage";
 import { Docs } from "./pages/Docs";
+import { LandingPage } from "./pages/LandingPage";
+import { LoginPage } from "./pages/LoginPage";
 import { useTheme } from "./context/ThemeContext";
-import { Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database, BookOpen } from "lucide-react";
+import { useAuth } from "./context/AuthContext";
+import { Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database, BookOpen, LogOut } from "lucide-react";
 import type { HistoryItem } from "./components/HistoryList";
 import type { Filters } from "./components/SettingsPanel";
 import type { IntelRecord } from "./components/IntelDataPanel";
@@ -38,8 +41,25 @@ async function backendLoadConfig(): Promise<any> {
 
 const DL = { provider: "groq", model: "llama-3.3-70b-versatile", apiKey: "" };
 
+// Gate component — shown before login
 function App() {
+  const { isAuthenticated } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
+
+  if (!isAuthenticated) {
+    if (showLogin) {
+      return <LoginPage onBack={() => setShowLogin(false)} />;
+    }
+    return <LandingPage onLoginClick={() => setShowLogin(true)} />;
+  }
+
+  return <AuthenticatedApp />;
+}
+
+// Main application (all data hooks live here — never called until logged in)
+function AuthenticatedApp() {
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
   const [runId, setRunId] = useState<string | null>(() => loadJSON("cp_runId", null));
   const [history, setHistory] = useState<HistoryItem[]>(() => loadJSON("cp_history", []));
   const [filters, setFilters] = useState<Filters>(() => {
@@ -176,14 +196,24 @@ function App() {
               <NL to="/docs" icon={<BookOpen size={14} />} label="Docs" grad="from-emerald-500 to-teal-500" />
             </div>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110 shrink-0"
-            style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
-            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-          >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={toggleTheme}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110"
+              style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              onClick={logout}
+              className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110"
+              style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              title="Sign out"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </nav>
         <Routes>
           <Route path="/" element={
