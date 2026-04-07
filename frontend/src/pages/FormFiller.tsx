@@ -7,6 +7,7 @@ import {
 import { LiveLogs } from "../components/LiveLogs";
 import { startFormFill, createFormLogStream, cancelFormFill } from "../services/api";
 import type { LogEntry } from "../hooks/useAgentLogs";
+import { ScrollReveal } from "../components/ScrollReveal";
 
 export interface FormProfile {
   id: string;
@@ -254,6 +255,7 @@ export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory,
       )}
 
       {/* Form Type Selection */}
+      <ScrollReveal animation="scroll-fade-up">
       <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(99,102,241,0.15)", color: "#6366f1" }}><Settings2 size={13} /></span>
@@ -279,6 +281,7 @@ export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory,
         </div>
         <p className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>{selectedTypeInfo.desc}</p>
       </div>
+      </ScrollReveal>
 
       {/* Company Name + Profile + Go */}
       <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
