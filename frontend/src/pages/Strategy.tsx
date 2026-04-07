@@ -6,6 +6,7 @@ import {
 import { LiveLogs } from "../components/LiveLogs";
 import { startStrategy, createStrategyLogStream, cancelStrategy } from "../services/api";
 import type { LogEntry } from "../hooks/useAgentLogs";
+import { ScrollReveal } from "../components/ScrollReveal";
 
 function ssGet<T>(key: string, fb: T): T { try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } }
 function ssSet(key: string, v: unknown) { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch {} }
@@ -120,12 +121,13 @@ export function Strategy() {
 
       {/* Tool Selector */}
       <div className="grid grid-cols-3 gap-3">
-        {TOOLS.map((t) => {
+        {TOOLS.map((t, i) => {
           const TIcon = t.icon;
           const active = activeTool === t.id;
           return (
-            <button key={t.id} onClick={() => { setActiveTool(t.id); setResult(null); setShowResult(false); }}
-              className="p-4 rounded-2xl text-left transition-all duration-200 hover:scale-[1.02]"
+            <ScrollReveal key={t.id} animation="scroll-scale-up" delay={i * 80}>
+            <button onClick={() => { setActiveTool(t.id); setResult(null); setShowResult(false); }}
+              className="p-4 rounded-2xl text-left transition-all duration-200 hover:scale-[1.02] w-full"
               style={{
                 backgroundColor: active ? `${t.color}10` : "var(--bg-card)",
                 border: `1.5px solid ${active ? t.color : "var(--border)"}`,
@@ -135,6 +137,7 @@ export function Strategy() {
               <div className="text-sm font-semibold" style={{ color: active ? t.color : "var(--text-primary)" }}>{t.label}</div>
               <div className="text-[10px] mt-1 line-clamp-2" style={{ color: "var(--text-muted)" }}>{t.desc}</div>
             </button>
+            </ScrollReveal>
           );
         })}
       </div>
