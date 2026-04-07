@@ -554,6 +554,58 @@ input[type="range"]::-moz-range-thumb {
   z-index: 0;
 }
 
+/* ══════════════════════════════════════════
+   SCROLL REVEAL ANIMATIONS
+   ══════════════════════════════════════════ */
+
+/* Hidden state — elements start invisible */
+.scroll-hidden {
+  opacity: 0;
+  transform: translateY(32px);
+  filter: blur(2px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Revealed state — shared base */
+.scroll-revealed {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fade up (default) */
+.scroll-fade-up.scroll-hidden { transform: translateY(32px); }
+
+/* Fade down */
+.scroll-fade-down.scroll-hidden { transform: translateY(-32px); }
+
+/* Fade left */
+.scroll-fade-left.scroll-hidden { transform: translateX(-40px); }
+
+/* Fade right */
+.scroll-fade-right.scroll-hidden { transform: translateX(40px); }
+
+/* Scale up */
+.scroll-scale-up.scroll-hidden { transform: scale(0.92); }
+
+/* Zoom in with rotation */
+.scroll-zoom-rotate.scroll-hidden { transform: scale(0.85) rotate(-2deg); }
+
+/* Slide up with bounce */
+.scroll-bounce-up.scroll-hidden { transform: translateY(48px); }
+.scroll-bounce-up.scroll-revealed {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Stagger children — use on parent, children get delayed */
+.scroll-stagger > .scroll-hidden { transition-delay: calc(var(--stagger-index, 0) * 80ms); }
+.scroll-stagger > .scroll-revealed { transition-delay: calc(var(--stagger-index, 0) * 80ms); }
+
 /* ── Sidebar icon bounce ── */
 @keyframes iconBounce {
   0%, 100% { transform: scale(1); }
