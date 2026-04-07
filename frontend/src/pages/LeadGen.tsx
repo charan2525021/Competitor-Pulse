@@ -36,9 +36,10 @@ interface LeadGenProps {
   leadRunId: string | null;
   setLeadRunId: (id: string | null) => void;
   onLeadsReady: (leads: Lead[], query: string) => void;
+  isAdmin?: boolean;
 }
 
-export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDeleteHistory, leadRunId, setLeadRunId, onLeadsReady }: LeadGenProps) {
+export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDeleteHistory, leadRunId, setLeadRunId, onLeadsReady, isAdmin }: LeadGenProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Lead[]>([]);
@@ -200,7 +201,7 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
   };
 
   return (
-    <div className="min-h-screen p-6 space-y-5 animate-fade-in" style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div className="min-h-screen p-6 space-y-5 page-enter" style={{ maxWidth: 1200, margin: "0 auto" }}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -243,11 +244,13 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
                   <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>
                     {new Date(h.timestamp).toLocaleDateString()}
                   </span>
-                  <button onClick={() => onDeleteHistory(h.id)}
-                    className="w-4 h-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
-                    style={{ color: "#ef4444" }}>
-                    <Trash2 size={10} />
-                  </button>
+                  {isAdmin && (
+                    <button onClick={() => onDeleteHistory(h.id)}
+                      className="w-4 h-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                      style={{ color: "#ef4444" }}>
+                      <Trash2 size={10} />
+                    </button>
+                  )}
                 </div>
               );
             })}

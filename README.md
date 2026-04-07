@@ -49,7 +49,7 @@ CompetitorPulse solves a real business problem: companies spend **10–20 hours/
 │         │           │           │                     │
 │  ┌──────┴───┐ ┌─────┴────┐ ┌───┴──────┐             │
 │  │ Planner  │ │ TinyFish │ │  Store   │             │
-│  │  (LLM)   │ │ Service  │ │ (JSON) 💾│             │
+│  │  (LLM)   │ │ Service  │ │(SQLite)💾│             │
 │  └──────┬───┘ └─────┬────┘ └──────────┘             │
 │         │           │                                 │
 │  ┌──────┴───┐       │                                │
@@ -70,7 +70,7 @@ CompetitorPulse solves a real business problem: companies spend **10–20 hours/
 4️⃣ Agent progress streams to frontend via SSE in real-time ⚡
 5️⃣ LLM extracts structured data from the agent's findings 📊
 6️⃣ Results displayed as interactive intel reports 🎨
-7️⃣ All data persisted to backend JSON files 💾
+7️⃣ All data persisted to SQLite database 💾
 
 ---
 
@@ -111,10 +111,10 @@ CompetitorPulse solves a real business problem: companies spend **10–20 hours/
 
 ### 🗄️ Intel Data Store
 
-📁 Persistent storage
+📁 Persistent SQLite storage
 📊 Categorized intel
 🔍 Expandable records
-🗑️ Delete records
+🗑️ Delete records (admin only)
 
 ---
 
@@ -128,6 +128,23 @@ CompetitorPulse solves a real business problem: companies spend **10–20 hours/
 
 ---
 
+### � Strategy Tools
+
+* 📊 Market Breakdown — analyze market positioning
+* 📦 Distribution Plan — generate go-to-market channels
+* 🎯 Competitor Weakness Map — identify competitive gaps
+
+---
+
+### 👤 User Profile & Roles
+
+* 🔐 Role-based access control (admin / viewer)
+* 🗑️ Delete operations restricted to admin users only
+* ✏️ Editable profile (username, role, phone)
+* 💾 Profile persists across logout/login
+
+---
+
 ### 🎨 Additional Features
 
 ⚡ Live Logs (real-time streaming)
@@ -135,7 +152,8 @@ CompetitorPulse solves a real business problem: companies spend **10–20 hours/
 🌙 Dark/Light Theme
 📂 Collapsible Sidebars
 🔑 API Key Management
-💾 Persistent Storage
+💾 SQLite Database Storage (auto-migrated from JSON)
+🔄 Strategy session persistence on page refresh
 
 ---
 
@@ -254,7 +272,7 @@ npm run dev
 | 🧠 LLM        | Groq, OpenAI, Ollama                 |
 | 🌐 Automation | TinyFish API                         |
 | ⚡ Streaming   | SSE                                  |
-| 💾 Storage    | JSON + localStorage                  |
+| 💾 Storage    | SQLite (better-sqlite3) + localStorage|
 
 ---
 
@@ -263,15 +281,18 @@ npm run dev
 ```
 Lead-Gen/
 ├── backend/
-│   ├── data/ 💾
+│   ├── data/
+│   │   └── store.db 💾 (SQLite database)
 │   ├── src/
 │   │   ├── controllers/ 🎮
+│   │   ├── db/ 🗄️
 │   │   ├── llm/ 🧠
 │   │   ├── routes/ 🔗
 │   │   ├── services/ ⚙️
 │   │   └── server.ts 🚀
 ├── frontend/
 │   ├── components/ 🧩
+│   ├── context/ 🔐 (Auth + Theme)
 │   ├── pages/ 📄
 │   └── services/ 🔌
 ├── .env 🔐
@@ -289,6 +310,30 @@ What positions is Stripe hiring for
 Check reviews for HubSpot on G2
 Research Salesforce, HubSpot, and Pipedrive
 ```
+
+---
+
+## 🗄️ Database
+
+CompetitorPulse uses **SQLite** (via `better-sqlite3`) as its storage engine:
+
+* 📂 Database file: `backend/data/store.db`
+* ⚡ WAL mode enabled for concurrent read performance
+* 🔄 **Auto-migration**: Existing JSON files are automatically imported on first run and backed up as `.bak`
+* 📦 Two tables: `collections` (all data) and `config` (settings)
+
+> No external database server required — SQLite runs embedded.
+
+---
+
+## 🔐 Access Control
+
+| Role    | View Data | Create Data | Delete Data |
+| ------- | --------- | ----------- | ----------- |
+| 🛡️ Admin | ✅        | ✅          | ✅          |
+| 👤 User  | ✅        | ✅          | ❌          |
+
+Delete operations are enforced both in the frontend (buttons hidden) and backend (403 Forbidden).
 
 ---
 

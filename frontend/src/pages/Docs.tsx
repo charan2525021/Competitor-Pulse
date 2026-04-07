@@ -2,6 +2,7 @@ import {
   BookOpen, Radar, Key, Brain, Cpu, Globe, FileText, Users,
   Database, BarChart3, Zap, Settings, ChevronDown, ArrowRight,
   DollarSign, Briefcase, Star, Share2, Search, Send,
+  Target, TrendingUp, Crosshair, Megaphone, MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -54,7 +55,7 @@ function Tip({ children }: { children: React.ReactNode }) {
 
 export function Docs() {
   return (
-    <div className="min-h-screen p-6 space-y-4 animate-fade-in" style={{ maxWidth: 800, margin: "0 auto" }}>
+    <div className="min-h-screen p-6 space-y-4 page-enter" style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -177,6 +178,7 @@ export function Docs() {
         <div className="space-y-2">
           {[
             { icon: <Zap size={13} />, color: "#6366f1", name: "Agent", desc: "The main page. Enter competitors, watch the agent work in real-time, and view structured intel reports when done." },
+            { icon: <Target size={13} />, color: "#ef4444", name: "Strategy", desc: "AI-powered strategy tools — Market Breakdown (TAM/SAM/SOM), Distribution Plan (30-day growth), and Competitor Weakness Map." },
             { icon: <FileText size={13} />, color: "#8b5cf6", name: "Forms", desc: "Autonomous form filler. Enter a company name and form type (demo request, contact us, etc.) and the agent finds and fills the form on their website." },
             { icon: <Users size={13} />, color: "#f59e0b", name: "Lead Gen", desc: "Find contacts via LinkedIn searches. Build lead lists with names, companies, roles, and emails. Send cold outreach." },
             { icon: <Database size={13} />, color: "#06b6d4", name: "Intel Data", desc: "All gathered intelligence stored permanently. Browse, search, and delete records. Data persists across sessions." },
@@ -190,6 +192,53 @@ export function Docs() {
               </div>
             </div>
           ))}
+        </div>
+      </DocSection>
+
+      {/* Strategy Tools */}
+      <DocSection icon={<Target size={16} />} title="Strategy Tools" color="#ef4444">
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            AI-powered market analysis tools that combine real web research with LLM reasoning. Each tool takes a market or niche description and produces a detailed strategic analysis.
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                icon: <TrendingUp size={13} />, color: "#22c55e", name: "Market Breakdown",
+                desc: "Full TAM/SAM/SOM analysis with market sizing, growth trends, underserved opportunities, and where the money is flowing. Enter a market niche (e.g. 'AI customer support') and get a complete market intelligence report.",
+                details: ["Total Addressable Market (TAM) sizing", "Serviceable Addressable Market (SAM)", "Serviceable Obtainable Market (SOM)", "Key market trends with impact ratings", "Underserved opportunities and whitespace", "Revenue flow analysis"],
+              },
+              {
+                icon: <Megaphone size={13} />, color: "#3b82f6", name: "Distribution Plan",
+                desc: "A 30-day execution plan to reach 1M+ people. Identifies the best channels, content formats, and daily actions for your specific product category.",
+                details: ["Channel-by-channel strategy (social, SEO, paid, communities)", "Content format recommendations", "Day-by-day execution timeline", "Budget allocation suggestions", "Growth metrics and KPIs to track", "Viral loop and referral strategies"],
+              },
+              {
+                icon: <Crosshair size={13} />, color: "#ef4444", name: "Competitor Weakness Map",
+                desc: "Deep analysis of the top 5 competitors in your space. Identifies strengths, weaknesses, pricing gaps, and a concrete domination strategy.",
+                details: ["Top 5 competitor identification and profiling", "Strength/weakness matrix for each competitor", "Pricing gap analysis", "Feature comparison and missing capabilities", "Customer sentiment analysis from reviews", "Actionable domination strategy"],
+              },
+            ].map((t) => (
+              <div key={t.name} className="rounded-xl p-4" style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
+                <div className="flex gap-3 items-start">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${t.color}12`, color: t.color }}>{t.icon}</span>
+                  <div className="flex-1">
+                    <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{t.name}</span>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{t.desc}</p>
+                    <div className="mt-2 grid grid-cols-2 gap-1">
+                      {t.details.map((d) => (
+                        <div key={d} className="flex items-center gap-1.5">
+                          <ArrowRight size={9} style={{ color: t.color, flexShrink: 0 }} />
+                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{d}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Tip>Strategy tools require both TinyFish and LLM API keys. The agent searches real websites for data, then the LLM synthesizes the findings into a strategic report.</Tip>
         </div>
       </DocSection>
 
@@ -220,23 +269,109 @@ export function Docs() {
       </DocSection>
 
       {/* Example Prompts */}
-      <DocSection icon={<Send size={16} />} title="Example Prompts" color="#22c55e">
-        <div className="space-y-2">
-          {[
-            "Compare pricing of Notion and Slack",
-            "What positions is Stripe hiring for",
-            "Check reviews for HubSpot on G2",
-            "Analyze Linear, Jira, and Asana — full breakdown",
-            "What features does Figma offer",
-            "Research Salesforce, HubSpot, and Pipedrive",
-          ].map((p) => (
-            <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-              style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
-              <Zap size={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
-              <span className="font-mono text-xs">{p}</span>
+      <DocSection icon={<Send size={16} />} title="Example Prompts for All Sections" color="#22c55e">
+        <div className="space-y-4">
+          {/* Agent Prompts */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Zap size={13} style={{ color: "#6366f1" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#6366f1" }}>Agent — Competitive Intelligence</span>
             </div>
-          ))}
-          <Tip>For best results, name specific companies. The LLM resolves company names to URLs automatically.</Tip>
+            <div className="space-y-1.5">
+              {[
+                "Compare pricing of Notion and Slack",
+                "What positions is Stripe hiring for right now?",
+                "Check reviews for HubSpot on G2",
+                "Analyze Linear, Jira, and Asana — full breakdown",
+                "What features does Figma offer on their product page?",
+                "Research Salesforce, HubSpot, and Pipedrive pricing and jobs",
+                "Get social media links for Vercel and Netlify",
+                "Find blog posts and product updates from Datadog",
+              ].map((p) => (
+                <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
+                  <Zap size={11} style={{ color: "#6366f1", flexShrink: 0 }} />
+                  <span className="font-mono text-xs">{p}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Strategy Prompts */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Target size={13} style={{ color: "#ef4444" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#ef4444" }}>Strategy — Market Analysis</span>
+            </div>
+            <div className="space-y-1.5">
+              {[
+                { tool: "Market Breakdown", prompt: "AI-powered customer support tools" },
+                { tool: "Market Breakdown", prompt: "Developer tools and API platforms" },
+                { tool: "Market Breakdown", prompt: "EdTech platforms for online learning" },
+                { tool: "Distribution Plan", prompt: "SaaS project management tool for remote teams" },
+                { tool: "Distribution Plan", prompt: "AI writing assistant for content creators" },
+                { tool: "Distribution Plan", prompt: "Open-source database monitoring tool" },
+                { tool: "Weakness Map", prompt: "Email marketing tools like Mailchimp, SendGrid" },
+                { tool: "Weakness Map", prompt: "CRM platforms — Salesforce, HubSpot, Pipedrive" },
+                { tool: "Weakness Map", prompt: "Design tools — Figma, Canva, Adobe XD" },
+              ].map((p) => (
+                <div key={p.prompt} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444" }}>{p.tool}</span>
+                  <span className="font-mono text-xs">{p.prompt}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Lead Gen Prompts */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Users size={13} style={{ color: "#f59e0b" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#f59e0b" }}>Lead Gen — Find Contacts</span>
+            </div>
+            <div className="space-y-1.5">
+              {[
+                "VP of Engineering at fintech startups in San Francisco",
+                "Head of Marketing at SaaS companies Series A-B",
+                "CTO at healthcare startups in New York",
+                "Product Manager at e-commerce companies",
+                "DevRel engineers at developer tool companies",
+                "Founders of AI startups in the Bay Area",
+              ].map((p) => (
+                <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
+                  <Users size={11} style={{ color: "#f59e0b", flexShrink: 0 }} />
+                  <span className="font-mono text-xs">{p}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Form Filler Prompts */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <FileText size={13} style={{ color: "#8b5cf6" }} />
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#8b5cf6" }}>Forms — Auto-Fill Examples</span>
+            </div>
+            <div className="space-y-1.5">
+              {[
+                { type: "Demo Request", url: "https://slack.com/contact-sales" },
+                { type: "Contact Us", url: "https://notion.so/contact" },
+                { type: "Newsletter", url: "https://stripe.com/blog" },
+                { type: "Free Trial", url: "https://hubspot.com/get-started" },
+                { type: "Partnership", url: "https://figma.com/partners" },
+              ].map((p) => (
+                <div key={p.url} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>{p.type}</span>
+                  <span className="font-mono text-xs">{p.url}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Tip>For best results, be specific with company names and markets. The LLM resolves company names to URLs and the agent navigates real websites to gather data.</Tip>
         </div>
       </DocSection>
     </div>

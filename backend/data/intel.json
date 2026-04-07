@@ -1,5 +1,56 @@
 [
   {
+    "company": "Microsoft Teams",
+    "scanDate": "2026-04-07T09:49:10.998Z",
+    "id": "84ee013e-2055-4cd0-863f-3ef7fbf7a897",
+    "type": "pricing",
+    "data": {
+      "plans": [
+        {
+          "name": "Free",
+          "price": "$0/mo",
+          "period": "monthly",
+          "features": [
+            "Unlimited chat and search",
+            "Audio and video calls"
+          ]
+        },
+        {
+          "name": "Microsoft 365 Business Basic",
+          "price": "$6.00/user/mo",
+          "period": "monthly",
+          "features": [
+            "Web and mobile versions of Office apps",
+            "1TB of storage"
+          ]
+        },
+        {
+          "name": "Microsoft 365 Business Standard",
+          "price": "$12.50/user/mo",
+          "period": "monthly",
+          "features": [
+            "Web and mobile versions of Office apps",
+            "1TB of storage",
+            "Desktop versions of Office apps"
+          ]
+        },
+        {
+          "name": "Microsoft 365 Business Premium",
+          "price": "$22.00/user/mo",
+          "period": "monthly",
+          "features": [
+            "Web and mobile versions of Office apps",
+            "1TB of storage",
+            "Desktop versions of Office apps",
+            "Advanced security and compliance"
+          ]
+        }
+      ],
+      "currency": "USD",
+      "hasFreeTier": true
+    }
+  },
+  {
     "company": "Microsoft",
     "scanDate": "2026-03-28T12:18:21.815Z",
     "id": "e9942b05-ccf6-4c44-b606-dcafe43b7cb2",

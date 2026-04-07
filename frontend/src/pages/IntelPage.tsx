@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { IntelRecord } from "../components/IntelDataPanel";
+import { AIParticles } from "../components/FishAnimation";
 import {
   DollarSign, Briefcase, Star, FileText, Cpu, Share2,
   Trash2, ExternalLink, ChevronDown, Database, Building2,
@@ -9,6 +10,7 @@ import {
 interface IntelPageProps {
   records: IntelRecord[];
   onDelete: (id: string) => void;
+  isAdmin?: boolean;
 }
 
 const TABS = [
@@ -23,7 +25,7 @@ const TABS = [
   { id: "forms" as const, label: "Forms", icon: <Mail size={14} />, color: "#6366f1" },
 ];
 
-export function IntelPage({ records, onDelete }: IntelPageProps) {
+export function IntelPage({ records, onDelete, isAdmin }: IntelPageProps) {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -40,7 +42,8 @@ export function IntelPage({ records, onDelete }: IntelPageProps) {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 57px)" }}>
+    <div className="flex flex-col page-enter" style={{ height: "calc(100vh - 57px)", position: "relative" }}>
+      <AIParticles count={6} />
       {/* Header */}
       <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3 mb-4">
@@ -117,7 +120,7 @@ export function IntelPage({ records, onDelete }: IntelPageProps) {
         ) : (
           <div className="space-y-6">
             {[...grouped.entries()].map(([company, recs]) => (
-              <CompanyGroup key={company} company={company} records={recs} onDelete={onDelete} />
+              <CompanyGroup key={company} company={company} records={recs} onDelete={onDelete} isAdmin={isAdmin} />
             ))}
           </div>
         )}
@@ -126,7 +129,7 @@ export function IntelPage({ records, onDelete }: IntelPageProps) {
   );
 }
 
-function CompanyGroup({ company, records, onDelete }: { company: string; records: IntelRecord[]; onDelete: (id: string) => void }) {
+function CompanyGroup({ company, records, onDelete, isAdmin }: { company: string; records: IntelRecord[]; onDelete: (id: string) => void; isAdmin?: boolean }) {
   const [collapsed, setCollapsed] = useState(false);
   const latestDate = records.reduce((latest, r) => r.scanDate > latest ? r.scanDate : latest, records[0].scanDate);
 
@@ -174,7 +177,7 @@ function CompanyGroup({ company, records, onDelete }: { company: string; records
       {!collapsed && (
         <div className="px-5 pb-5 space-y-4 animate-fade-in">
           {records.map((rec) => (
-            <FullRecordCard key={rec.id} record={rec} onDelete={onDelete} />
+            <FullRecordCard key={rec.id} record={rec} onDelete={onDelete} isAdmin={isAdmin} />
           ))}
         </div>
       )}
@@ -182,7 +185,7 @@ function CompanyGroup({ company, records, onDelete }: { company: string; records
   );
 }
 
-function FullRecordCard({ record, onDelete }: { record: IntelRecord; onDelete: (id: string) => void }) {
+function FullRecordCard({ record, onDelete, isAdmin }: { record: IntelRecord; onDelete: (id: string) => void; isAdmin?: boolean }) {
   const tab = TABS.find((t) => t.id === record.type);
   const color = tab?.color || "#3b82f6";
 
@@ -193,11 +196,13 @@ function FullRecordCard({ record, onDelete }: { record: IntelRecord; onDelete: (
           style={{ backgroundColor: `${color}15`, color }}>{tab?.icon}</span>
         <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{tab?.label}</span>
         <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
-        <button onClick={() => onDelete(record.id)}
-          className="w-6 h-6 rounded flex items-center justify-center transition-all duration-200 hover:scale-110"
-          style={{ color: "#ef4444" }} title="Delete">
-          <Trash2 size={13} />
-        </button>
+        {isAdmin && (
+          <button onClick={() => onDelete(record.id)}
+            className="w-6 h-6 rounded flex items-center justify-center transition-all duration-200 hover:scale-110"
+            style={{ color: "#ef4444" }} title="Delete">
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
       <FullRecordDetail record={record} />
     </div>

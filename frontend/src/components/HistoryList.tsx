@@ -12,9 +12,10 @@ interface HistoryListProps {
   activeRunId: string | null;
   onSelect: (runId: string) => void;
   onDelete: (runId: string) => void;
+  isAdmin?: boolean;
 }
 
-export function HistoryList({ items, activeRunId, onSelect, onDelete }: HistoryListProps) {
+export function HistoryList({ items, activeRunId, onSelect, onDelete, isAdmin }: HistoryListProps) {
   const sc = {
     running: { color: "#eab308", label: "Running" },
     done: { color: "#22c55e", label: "Done" },
@@ -52,17 +53,19 @@ export function HistoryList({ items, activeRunId, onSelect, onDelete }: HistoryL
               <span className={`w-2 h-2 rounded-full shrink-0 ${item.status === "running" ? "animate-pulse-dot" : ""}`} style={{ backgroundColor: s.color }} />
               <span className="text-xs font-medium" style={{ color: s.color }}>{s.label}</span>
               <span className="text-xs ml-auto" style={{ color: "var(--text-muted)" }}>{new Date(item.timestamp).toLocaleTimeString()}</span>
-              <span
-                role="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(item.runId); }}
-                className="w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all duration-200 hover:scale-125"
-                style={{ color: "#ef4444", opacity: 0.5 }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
-                title="Delete"
-              >
-                <Trash2 size={11} />
-              </span>
+              {isAdmin && (
+                <span
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); onDelete(item.runId); }}
+                  className="w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all duration-200 hover:scale-125"
+                  style={{ color: "#ef4444", opacity: 0.5 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
+                  title="Delete"
+                >
+                  <Trash2 size={11} />
+                </span>
+              )}
             </div>
             <p className="text-sm truncate" style={{ color: "var(--text-primary)" }}>{item.prompt}</p>
           </button>
