@@ -5,6 +5,7 @@ import {
   Phone, MapPin, Send, ChevronDown, Play, Sparkles,
 } from "lucide-react";
 import { AIParticles } from "../components/FishAnimation";
+import { ScrollReveal } from "../components/ScrollReveal";
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -127,13 +128,15 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               { icon: Globe, title: "Social Media Discovery", desc: "Find and monitor competitor social profiles across all major platforms.", color: "#ec4899" },
               { icon: Database, title: "Intel Data Store", desc: "All collected intelligence is stored, categorized, and searchable. Export anytime.", color: "#14b8a6" },
             ].map((f, i) => (
-              <div key={f.title} className="landing-feature-card card-shimmer" style={{ animationDelay: `${i * 0.05}s` }}>
+              <ScrollReveal key={f.title} animation="scroll-scale-up" delay={i * 60} threshold={0.08}>
+              <div className="landing-feature-card card-shimmer" style={{ animationDelay: `${i * 0.05}s` }}>
                 <div className="landing-feature-icon animate-float" style={{ backgroundColor: `${f.color}12`, color: f.color, animationDelay: `${i * 0.3}s` }}>
                   <f.icon size={24} />
                 </div>
                 <h3 className="landing-feature-title">{f.title}</h3>
                 <p className="landing-feature-desc">{f.desc}</p>
               </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -154,12 +157,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               { step: "03", title: "Real-time Streaming", desc: "Watch agent progress live via Server-Sent Events. See every page visited, form filled, and data extracted in real-time.", icon: Clock },
               { step: "04", title: "Get Structured Intel", desc: "Receive organized reports with pricing tables, job listings, review summaries, and strategic insights — all saved for later.", icon: BarChart3 },
             ].map((s, i) => (
-              <div key={s.step} className="landing-step card-shimmer" style={{ animationDelay: `${i * 0.1}s` }}>
+              <ScrollReveal key={s.step} animation="scroll-bounce-up" delay={i * 120} threshold={0.1}>
+              <div className="landing-step card-shimmer" style={{ animationDelay: `${i * 0.1}s` }}>
                 <div className="landing-step-number">{s.step}</div>
                 <div className="landing-step-icon animate-float" style={{ animationDelay: `${i * 0.4}s` }}><s.icon size={28} /></div>
                 <h3 className="landing-step-title">{s.title}</h3>
                 <p className="landing-step-desc">{s.desc}</p>
               </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -168,11 +173,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       {/* ── Key Capabilities Detail ── */}
       <section className="landing-capabilities">
         <div className="landing-container">
+          <ScrollReveal animation="scroll-fade-up">
           <div className="landing-section-header">
             <h2 className="landing-section-title">Unlike Simple Chatbots or API Wrappers</h2>
             <p className="landing-section-subtitle">CompetitorPulse uses a real web agent that interacts with live websites.</p>
           </div>
+          </ScrollReveal>
 
+          <ScrollReveal animation="scroll-scale-up" delay={100}>
           <div className="landing-capability-tabs">
             <div className="landing-tab-list">
               {[
@@ -237,6 +245,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               )}
             </div>
           </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -266,8 +275,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 features: ["Everything in Pro", "Custom integrations", "SSO & SAML", "Dedicated account manager", "SLA guarantee", "On-premise option"],
                 cta: "Contact Sales", highlight: false,
               },
-            ].map((plan) => (
-              <div key={plan.name} className={`landing-pricing-card card-shimmer ${plan.highlight ? "highlighted" : ""}`}>
+            ].map((plan, i) => (
+              <ScrollReveal key={plan.name} animation="scroll-fade-up" delay={i * 120} threshold={0.1}>
+              <div className={`landing-pricing-card card-shimmer ${plan.highlight ? "highlighted" : ""}`}>
                 {plan.highlight && <div className="landing-pricing-popular">Most Popular</div>}
                 <h3 className="landing-pricing-name">{plan.name}</h3>
                 <div className="landing-pricing-price">
@@ -283,6 +293,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                   {plan.cta}
                 </button>
               </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
@@ -297,6 +308,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           </div>
 
           <div className="landing-contact-grid">
+            <ScrollReveal animation="scroll-fade-left">
             <div className="landing-contact-info">
               <div className="landing-contact-item">
                 <div className="landing-contact-icon"><Mail size={20} /></div>
@@ -320,7 +332,9 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 </div>
               </div>
             </div>
+            </ScrollReveal>
 
+            <ScrollReveal animation="scroll-fade-right" delay={150}>
             <form className="landing-contact-form" onSubmit={handleContactSubmit}>
               <input
                 type="text" placeholder="Your Name" required
@@ -341,6 +355,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 {contactSent ? <><CheckCircle2 size={16} /> Sent!</> : <><Send size={16} /> Send Message</>}
               </button>
             </form>
+            </ScrollReveal>
           </div>
         </div>
       </section>
