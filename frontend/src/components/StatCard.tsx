@@ -19,7 +19,7 @@ export function StatCard({ label, value, icon, color = "blue", delay = 0 }: Stat
 
   return (
     <div
-      className="rounded-2xl p-5 animate-scale-in transition-all duration-200 hover:-translate-y-0.5"
+      className="rounded-2xl p-5 animate-scale-in transition-all duration-200 hover:-translate-y-0.5 card-shimmer"
       style={{
         animationDelay: `${delay * 80}ms`,
         backgroundColor: "var(--bg-card)",

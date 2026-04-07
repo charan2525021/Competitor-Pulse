@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   TrendingUp, Target, Crosshair, Loader2, Send, XCircle,
   DollarSign, ArrowRight, Zap, Globe, ChevronDown, Megaphone,
@@ -6,6 +6,9 @@ import {
 import { LiveLogs } from "../components/LiveLogs";
 import { startStrategy, createStrategyLogStream, cancelStrategy } from "../services/api";
 import type { LogEntry } from "../hooks/useAgentLogs";
+
+function ssGet<T>(key: string, fb: T): T { try { const v = sessionStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } }
+function ssSet(key: string, v: unknown) { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch {} }
 
 const TOOLS = [
   {
@@ -26,14 +29,44 @@ const TOOLS = [
 ];
 
 export function Strategy() {
-  const [activeTool, setActiveTool] = useState("market");
-  const [input, setInput] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [result, setResult] = useState<any>(null);
+  const [activeTool, setActiveTool] = useState(() => ssGet("strat_tool", "market"));
+  const [input, setInput] = useState(() => ssGet("strat_input", ""));
+  const [isRunning, setIsRunning] = useState(() => !!ssGet<string | null>("strat_runId", null));
+  const [logs, setLogs] = useState<LogEntry[]>(() => ssGet("strat_logs", []));
+  const [result, setResult] = useState<any>(() => ssGet("strat_result", null));
   const [showResult, setShowResult] = useState(false);
   const esRef = useRef<EventSource | null>(null);
-  const runIdRef = useRef<string | null>(null);
+  const runIdRef = useRef<string | null>(ssGet("strat_runId", null));
+
+  // Persist state changes
+  useEffect(() => { ssSet("strat_tool", activeTool); }, [activeTool]);
+  useEffect(() => { ssSet("strat_input", input); }, [input]);
+  useEffect(() => { ssSet("strat_logs", logs); }, [logs]);
+  useEffect(() => { ssSet("strat_result", result); }, [result]);
+
+  const connectStream = useCallback((runId: string) => {
+    esRef.current?.close();
+    const es = createStrategyLogStream(runId,
+      (msg) => setLogs((p) => { const updated = [...p, { ...msg, timestamp: new Date().toISOString() }]; return updated; }),
+      (res) => {
+        setIsRunning(false);
+        ssSet("strat_runId", null);
+        if (res) { setResult(res); setShowResult(true); }
+      }
+    );
+    esRef.current = es;
+  }, []);
+
+  // Reconnect to an active run on mount (handles refresh / tab switch)
+  useEffect(() => {
+    const savedRunId = ssGet<string | null>("strat_runId", null);
+    if (savedRunId) {
+      runIdRef.current = savedRunId;
+      setIsRunning(true);
+      connectStream(savedRunId);
+    }
+    return () => { esRef.current?.close(); };
+  }, [connectStream]);
 
   const tool = TOOLS.find((t) => t.id === activeTool) || TOOLS[0];
   const Icon = tool.icon;
@@ -55,25 +88,24 @@ export function Strategy() {
       } catch {}
 
       const data = await startStrategy(activeTool, input.trim(), llm, tfKey);
-      if (!data.success) { setIsRunning(false); return; }
+      if (!data.success) { setIsRunning(false); ssSet("strat_runId", null); return; }
       runIdRef.current = data.runId;
+      ssSet("strat_runId", data.runId);
 
-      const es = createStrategyLogStream(data.runId,
-        (msg) => setLogs((p) => [...p, { ...msg, timestamp: new Date().toISOString() }]),
-        (res) => { setIsRunning(false); if (res) { setResult(res); setShowResult(true); } }
-      );
-      esRef.current = es;
-    } catch { setIsRunning(false); }
+      connectStream(data.runId);
+    } catch { setIsRunning(false); ssSet("strat_runId", null); }
   };
 
   const handleCancel = async () => {
     if (runIdRef.current) await cancelStrategy(runIdRef.current).catch(() => {});
     esRef.current?.close();
     setIsRunning(false);
+    runIdRef.current = null;
+    ssSet("strat_runId", null);
   };
 
   return (
-    <div className="min-h-screen p-6 space-y-5 animate-fade-in" style={{ maxWidth: 1000, margin: "0 auto" }}>
+    <div className="min-h-screen p-6 space-y-5 page-enter" style={{ maxWidth: 1000, margin: "0 auto" }}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"

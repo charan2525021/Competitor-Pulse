@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Dashboard } from "./pages/Dashboard";
 import { LeadGen } from "./pages/LeadGen";
@@ -9,9 +9,12 @@ import { IntelPage } from "./pages/IntelPage";
 import { Docs } from "./pages/Docs";
 import { Strategy } from "./pages/Strategy";
 import { useTheme } from "./context/ThemeContext";
+import { useAuth } from "./context/AuthContext";
+import { LandingPage } from "./pages/LandingPage";
+import { LoginPage } from "./pages/LoginPage";
 import {
   Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database,
-  BookOpen, Target, PanelLeftClose, PanelLeftOpen, Settings, Brain, Fish,
+  BookOpen, Target, PanelLeftClose, PanelLeftOpen, Settings, Brain, Fish, LogOut, User, Shield, Clock, Mail, Phone, Pencil, Check, X,
 } from "lucide-react";
 import type { HistoryItem } from "./components/HistoryList";
 import type { Filters } from "./components/SettingsPanel";
@@ -39,6 +42,21 @@ const NAV_ITEMS = [
 
 function App() {
   const { theme, toggleTheme } = useTheme();
+  const { isAuthenticated, login, logout, user, updateProfile } = useAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ username: "", phone: "", role: "" });
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+  const [showLogin, setShowLogin] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [runId, setRunId] = useState<string | null>(() => loadJSON("cp_runId", null));
@@ -72,6 +90,7 @@ function App() {
   useEffect(()=>{if(loaded){saveJSON("cp_fillHistory",fillHistory);bSave("fillHistory",fillHistory);}},[fillHistory,loaded]);
   useEffect(()=>{saveJSON("cp_leadRunId",leadRunId);},[leadRunId]);
 
+  const isAdmin = user?.role === "admin";
   const deleteIntelRecord = useCallback((id: string) => setIntelRecords(p=>p.filter(r=>r.id!==id)), []);
   const deleteHistory = useCallback((tid: string) => { setHistory(p=>p.filter(h=>h.runId!==tid)); if(runId===tid) setRunId(null); }, [runId]);
   const deleteLeadHistory = useCallback((id: string) => setLeadHistory(p=>p.filter(h=>h.id!==id)), []);
@@ -88,6 +107,14 @@ function App() {
   }, []);
   const addLeadsToIntel = useCallback((fl: Lead[],q: string) => {if(!fl.length)return;setIntelRecords(p=>{const u=[{id:crypto.randomUUID(),company:q,scanDate:new Date().toISOString(),type:"leads" as const,data:fl},...p];saveJSON("cp_intel",u);return u;});}, []);
   const addFormFillToIntel = useCallback((fr: FormFillRecord) => {if(fr.status==="running")return;let co=fr.url;try{if(fr.url.startsWith("http"))co=new URL(fr.url).hostname.replace("www.","");}catch{}setIntelRecords(p=>{const u=[{id:crypto.randomUUID(),company:co,scanDate:fr.timestamp,type:"forms" as const,data:fr},...p];saveJSON("cp_intel",u);return u;});}, []);
+
+  // ── Auth gate: show landing or login if not authenticated ──
+  if (!isAuthenticated) {
+    if (showLogin) {
+      return <LoginPage onLogin={(u) => { login(u); setShowLogin(false); }} />;
+    }
+    return <LandingPage onGetStarted={() => setShowLogin(true)} />;
+  }
 
   return (
     <BrowserRouter>
@@ -114,8 +141,8 @@ function App() {
             {NAV_ITEMS.map((item) => <SidebarLink key={item.to} {...item} collapsed={!sidebarOpen} />)}
           </nav>
 
-          {/* Expand/Collapse — bottom of menu */}
-          <div className="px-2 py-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+          {/* Expand/Collapse + Logout — bottom of menu */}
+          <div className="px-2 py-3 shrink-0 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
               style={{ color: "var(--text-muted)" }}
@@ -126,6 +153,17 @@ function App() {
                 {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
               </span>
               {sidebarOpen && <span className="text-sm font-medium animate-fade-in">Collapse</span>}
+            </button>
+            <button onClick={logout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
+              style={{ color: "#ef4444" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(239,68,68,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: "rgba(239,68,68,0.08)" }}>
+                <LogOut size={18} />
+              </span>
+              {sidebarOpen && <span className="text-sm font-medium animate-fade-in">Logout</span>}
             </button>
           </div>
         </aside>
@@ -166,6 +204,109 @@ function App() {
                   style={{ backgroundColor: filters.llm?.apiKey ? "#22c55e" : "#ef4444", borderColor: "var(--bg-card)" }} />
               </div>
             </div>
+            {/* Profile Icon */}
+            <div className="relative" ref={profileRef}>
+              <button onClick={() => setProfileOpen(!profileOpen)}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}
+                title="Profile">
+                <User size={16} />
+              </button>
+              {profileOpen && (
+                <div className="absolute right-0 top-12 w-72 rounded-xl shadow-xl z-50 overflow-hidden"
+                  style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                  {/* Profile header */}
+                  <div className="px-5 pt-5 pb-4 text-center relative" style={{ borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, #6366f115, #8b5cf615)" }}>
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                      style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}>
+                      <User size={24} />
+                    </div>
+                    {profileEditing ? (
+                      <input value={editForm.username} onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))}
+                        className="w-full text-sm font-bold text-center rounded-lg px-2 py-1 outline-none"
+                        style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                    ) : (
+                      <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{user?.username || "User"}</div>
+                    )}
+                    <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{user?.role || "Admin"}</div>
+                    {!profileEditing && (
+                      <button onClick={() => { setEditForm({ username: user?.username || "", phone: user?.phone || "", role: user?.role || "" }); setProfileEditing(true); }}
+                        className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
+                        style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                        title="Edit Profile">
+                        <Pencil size={12} />
+                      </button>
+                    )}
+                  </div>
+                  {/* Profile details */}
+                  <div className="px-4 py-3 space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <Shield size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Role</div>
+                        {profileEditing ? (
+                          <input value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
+                            className="w-full text-xs font-medium rounded px-1.5 py-0.5 outline-none mt-0.5"
+                            style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                        ) : (
+                          <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{user?.role || "Admin"}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Mail size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Email</div>
+                        <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{(profileEditing ? editForm.username : user?.username) || "admin"}@competitorpulse.io</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Phone size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Mobile</div>
+                        {profileEditing ? (
+                          <input value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
+                            className="w-full text-xs font-medium rounded px-1.5 py-0.5 outline-none mt-0.5"
+                            style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                        ) : (
+                          <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{user?.phone || "+1 (555) 123-4567"}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Clock size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Login Time</div>
+                        <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{user?.loginTime ? new Date(user.loginTime).toLocaleString() : "—"}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Actions */}
+                  <div className="px-4 py-3 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+                    {profileEditing ? (
+                      <div className="flex gap-2">
+                        <button onClick={() => { updateProfile({ username: editForm.username.trim() || user?.username || "admin", phone: editForm.phone, role: editForm.role }); setProfileEditing(false); }}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110"
+                          style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+                          <Check size={14} /> Save
+                        </button>
+                        <button onClick={() => setProfileEditing(false)}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110"
+                          style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)" }}>
+                          <X size={14} /> Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setProfileOpen(false); logout(); }}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110"
+                        style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+                        <LogOut size={14} /> Sign Out
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </header>
 
           {/* Content + Settings Panel side by side */}
@@ -173,13 +314,13 @@ function App() {
             {/* Page content */}
             <main className="flex-1 overflow-y-auto">
               <Routes>
-                <Route path="/" element={<Home runId={runId} setRunId={setRunId} history={history} setHistory={setHistory} filters={filters} setFilters={setFilters} onReportsReady={addReportsToIntel} onDeleteHistory={deleteHistory} />} />
+                <Route path="/" element={<Home runId={runId} setRunId={setRunId} history={history} setHistory={setHistory} filters={filters} setFilters={setFilters} onReportsReady={addReportsToIntel} onDeleteHistory={deleteHistory} isAdmin={isAdmin} />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/strategy" element={<Strategy />} />
-                <Route path="/intel" element={<IntelPage records={intelRecords} onDelete={deleteIntelRecord} />} />
-                <Route path="/leads" element={<LeadGen leads={leads} setLeads={setLeads} leadHistory={leadHistory} setLeadHistory={setLeadHistory} onDeleteHistory={deleteLeadHistory} leadRunId={leadRunId} setLeadRunId={setLeadRunId} onLeadsReady={addLeadsToIntel} />} />
-                <Route path="/forms" element={<FormFiller profiles={formProfiles} setProfiles={setFormProfiles} fillHistory={fillHistory} setFillHistory={setFillHistory} onFormFillDone={addFormFillToIntel} />} />
+                <Route path="/intel" element={<IntelPage records={intelRecords} onDelete={deleteIntelRecord} isAdmin={isAdmin} />} />
+                <Route path="/leads" element={<LeadGen leads={leads} setLeads={setLeads} leadHistory={leadHistory} setLeadHistory={setLeadHistory} onDeleteHistory={deleteLeadHistory} leadRunId={leadRunId} setLeadRunId={setLeadRunId} onLeadsReady={addLeadsToIntel} isAdmin={isAdmin} />} />
+                <Route path="/forms" element={<FormFiller profiles={formProfiles} setProfiles={setFormProfiles} fillHistory={fillHistory} setFillHistory={setFillHistory} onFormFillDone={addFormFillToIntel} isAdmin={isAdmin} />} />
               </Routes>
             </main>
 

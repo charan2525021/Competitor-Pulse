@@ -60,9 +60,10 @@ interface FormFillerProps {
   setFillHistory: React.Dispatch<React.SetStateAction<FormFillRecord[]>>;
   onFormFillDone: (record: FormFillRecord) => void;
   onDeleteFillHistory?: (id: string) => void;
+  isAdmin?: boolean;
 }
 
-export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory, onFormFillDone, onDeleteFillHistory }: FormFillerProps) {
+export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory, onFormFillDone, onDeleteFillHistory, isAdmin }: FormFillerProps) {
   const [companyName, setCompanyName] = useState("");
   const [selectedType, setSelectedType] = useState("demo-request");
   const [activeProfileId, setActiveProfileId] = useState(profiles[0]?.id || "");
@@ -150,7 +151,7 @@ export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory,
   const selectedTypeInfo = FORM_TYPES.find((t) => t.value === selectedType) || FORM_TYPES[0];
 
   return (
-    <div className="min-h-screen p-6 space-y-5 animate-fade-in" style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div className="min-h-screen p-6 space-y-5 page-enter" style={{ maxWidth: 1200, margin: "0 auto" }}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -203,9 +204,11 @@ export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory,
                       </div>
                     </div>
                     <ChevronDown size={13} style={{ color: "var(--text-muted)", transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.3s", flexShrink: 0 }} />
-                    <button onClick={(e) => { e.stopPropagation(); setFillHistory((prev) => prev.filter((x) => x.id !== h.id)); onDeleteFillHistory?.(h.id); }}
-                      className="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                      style={{ color: "#ef4444" }}><Trash2 size={11} /></button>
+                    {isAdmin && (
+                      <button onClick={(e) => { e.stopPropagation(); setFillHistory((prev) => prev.filter((x) => x.id !== h.id)); onDeleteFillHistory?.(h.id); }}
+                        className="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                        style={{ color: "#ef4444" }}><Trash2 size={11} /></button>
+                    )}
                   </div>
                   {/* Dynamic fields — collapsed by default */}
                   {isExpanded && fieldsFilled.length > 0 && (

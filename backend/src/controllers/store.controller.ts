@@ -1,17 +1,17 @@
 import { Request, Response } from "express";
-import { loadStore, saveStore, removeFromStore } from "../services/store";
+import { loadStore, saveStore, removeFromStore, loadConfig, saveConfig } from "../services/store";
 
 // ── Config (LLM settings, TinyFish key, filters) ──
 
 export function getConfig(_req: Request, res: Response) {
-  const config = loadStore("config", null);
+  const config = loadConfig();
   res.json({ success: true, config });
 }
 
-export function saveConfig(req: Request, res: Response) {
+export function postConfig(req: Request, res: Response) {
   const { config } = req.body;
   if (!config) { res.status(400).json({ success: false, error: "config required" }); return; }
-  saveStore("config", config);
+  saveConfig(config);
   res.json({ success: true });
 }
 
@@ -41,6 +41,11 @@ export function saveData(req: Request, res: Response) {
 }
 
 export function deleteItem(req: Request, res: Response) {
+  const role = req.headers["x-user-role"] as string;
+  if (role !== "admin") {
+    res.status(403).json({ success: false, error: "Admin access required" });
+    return;
+  }
   const collection = req.params.collection as string;
   const id = req.params.id as string;
   const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles"];

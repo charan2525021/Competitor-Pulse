@@ -4,6 +4,7 @@ import {
   RefreshCw, TrendingUp, BarChart3, Activity,
 } from "lucide-react";
 import { StatCard } from "../components/StatCard";
+import { AIParticles } from "../components/FishAnimation";
 import { fetchDashboardStats } from "../services/api";
 
 interface DashboardStats {
@@ -36,7 +37,8 @@ export function Dashboard() {
   const hasData = stats && stats.totalScans > 0;
 
   return (
-    <div className="min-h-screen p-6 space-y-6 animate-fade-in" style={{ maxWidth: 1400, margin: "0 auto" }}>
+    <div className="min-h-screen p-6 space-y-6 page-enter" style={{ maxWidth: 1400, margin: "0 auto", position: "relative" }}>
+      <AIParticles count={8} />
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
           style={{ background: "linear-gradient(135deg, #3b82f620, #8b5cf620)" }}>
@@ -56,7 +58,10 @@ export function Dashboard() {
         </button>
       </div>
 
+      {loading && <div className="flex items-center justify-center py-8"><span className="text-sm font-medium" style={{ color: "var(--accent)" }}>Fetching dashboard data...</span></div>}
+
       {/* Stat Cards */}
+      {!loading && (
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Scans" value={stats?.totalScans ?? 0} icon={<Radar size={20} />} color="blue" delay={0} />
         <StatCard label="Competitors" value={stats?.totalCompetitors ?? 0} icon={<TrendingUp size={20} />} color="purple" delay={1} />
@@ -64,8 +69,9 @@ export function Dashboard() {
         <StatCard label="Job Postings" value={stats?.totalJobs ?? 0} icon={<Briefcase size={20} />} color="orange" delay={3} />
         <StatCard label="Reviews Found" value={stats?.totalReviews ?? 0} icon={<Star size={20} />} color="purple" delay={4} />
       </div>
+      )}
 
-      {hasData ? (
+      {!loading && hasData ? (
         <>
           {/* Per-Scan Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -126,10 +132,12 @@ export function Dashboard() {
             </DataCard>
           </div>
         </>
-      ) : (
+      ) : !loading ? (
         <div className="rounded-2xl p-8 text-center animate-fade-in"
           style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
-          <Radar size={48} style={{ color: "var(--text-muted)", opacity: 0.2, margin: "0 auto 16px" }} />
+          <div style={{ margin: "0 auto 16px", width: "fit-content" }}>
+            <Radar size={48} style={{ color: "var(--accent)", opacity: 0.4 }} />
+          </div>
           <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
             Run your first scan to populate the dashboard
           </h2>
@@ -138,7 +146,7 @@ export function Dashboard() {
             Reports will appear here after each scan completes.
           </p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

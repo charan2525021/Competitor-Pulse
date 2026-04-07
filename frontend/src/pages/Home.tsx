@@ -6,6 +6,7 @@ import { HistoryList, type HistoryItem } from "../components/HistoryList";
 import { CompetitorCard } from "../components/CompetitorCard";
 import { useAgentLogs } from "../hooks/useAgentLogs";
 import { startAgent, cancelAgent } from "../services/api";
+import { AIParticles } from "../components/FishAnimation";
 import {
   PanelRightClose, PanelRightOpen, Clock, Cpu, Radar, StopCircle,
 } from "lucide-react";
@@ -19,9 +20,10 @@ interface HomeProps {
   setFilters: (f: Filters) => void;
   onReportsReady: (reports: any[]) => void;
   onDeleteHistory: (runId: string) => void;
+  isAdmin?: boolean;
 }
 
-export function Home({ runId, setRunId, history, setHistory, filters, setFilters, onReportsReady, onDeleteHistory }: HomeProps) {
+export function Home({ runId, setRunId, history, setHistory, filters, setFilters, onReportsReady, onDeleteHistory, isAdmin }: HomeProps) {
   const [rightOpen, setRightOpen] = useState(false);
   const [rightTab, setRightTab] = useState<"history" | "config">("history");
   const [showReports, setShowReports] = useState(false);
@@ -84,7 +86,7 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
   return (
     <div className="flex h-full">
       {/* ── Main Content ── */}
-      <main className="flex-1 flex flex-col p-6 gap-4 overflow-y-auto animate-fade-in min-w-0">
+      <main className="flex-1 flex flex-col p-6 gap-4 overflow-y-auto page-enter min-w-0" style={{ position: "relative" }}>
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -134,8 +136,15 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
           <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
             {reports.map((r, i) => <CompetitorCard key={r.company + i} report={r} index={i} />)}
           </div>
-        ) : (
+        ) : logs.length > 0 || isRunning ? (
           <LiveLogs logs={logs} isRunning={isRunning} />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2" style={{ position: "relative" }}>
+            <AIParticles count={10} />
+            <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
+              Enter a query to start your competitive intelligence scan
+            </p>
+          </div>
         )}
       </main>
 
@@ -168,7 +177,7 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
             {rightTab === "history" ? (
               <HistoryList items={history} activeRunId={runId}
                 onSelect={(id) => { setRunId(id); setShowReports(false); }}
-                onDelete={onDeleteHistory} />
+                onDelete={onDeleteHistory} isAdmin={isAdmin} />
             ) : (
               <SettingsPanel filters={filters} onChange={setFilters} mode="agent-only" />
             )}
