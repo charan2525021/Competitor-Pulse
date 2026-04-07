@@ -177,3 +177,35 @@ export async function deleteCollectionItem(name: string, id: string): Promise<vo
     await fetch(`${API_BASE}/store/${name}/${id}`, { method: "DELETE" });
   } catch { /* silent */ }
 }
+
+
+/* ── Strategy Tools ── */
+
+export async function startStrategy(tool: string, input: string, llm?: any, tinyfishApiKey?: string) {
+  const res = await fetch(`${API_BASE}/strategy/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tool, input, llm, tinyfishApiKey }),
+  });
+  return res.json();
+}
+
+export function createStrategyLogStream(
+  runId: string,
+  onMessage: (data: any) => void,
+  onDone: (result?: any) => void
+) {
+  const es = new EventSource(`${API_BASE}/strategy/logs/${runId}`);
+  es.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    onMessage(data);
+    if (data.type === "complete") { es.close(); onDone(data.result); }
+  };
+  es.onerror = () => { es.close(); onDone(); };
+  return es;
+}
+
+export async function cancelStrategy(runId: string) {
+  const res = await fetch(`${API_BASE}/strategy/cancel/${runId}`, { method: "POST" });
+  return res.json();
+}
