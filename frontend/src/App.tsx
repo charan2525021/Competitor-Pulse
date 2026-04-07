@@ -8,8 +8,9 @@ import { FormFiller } from "./pages/FormFiller";
 import type { FormProfile, FormFillRecord } from "./pages/FormFiller";
 import { IntelPage } from "./pages/IntelPage";
 import { Docs } from "./pages/Docs";
+import { Strategy } from "./pages/Strategy";
 import { useTheme } from "./context/ThemeContext";
-import { Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database, BookOpen } from "lucide-react";
+import { Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database, BookOpen, Target } from "lucide-react";
 import type { HistoryItem } from "./components/HistoryList";
 import type { Filters } from "./components/SettingsPanel";
 import type { IntelRecord } from "./components/IntelDataPanel";
@@ -173,6 +174,7 @@ function App() {
               <NL to="/leads" icon={<Users size={14} />} label="Lead Gen" grad="from-amber-500 to-red-500" />
               <NL to="/intel" icon={<Database size={14} />} label="Intel Data" grad="from-cyan-500 to-blue-500" />
               <NL to="/dashboard" icon={<BarChart3 size={14} />} label="Dashboard" grad="from-blue-500 to-purple-600" />
+              <NL to="/strategy" icon={<Target size={14} />} label="Strategy" grad="from-amber-500 to-red-500" />
               <NL to="/docs" icon={<BookOpen size={14} />} label="Docs" grad="from-emerald-500 to-teal-500" />
             </div>
           </div>
@@ -193,6 +195,7 @@ function App() {
           } />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/docs" element={<Docs />} />
+          <Route path="/strategy" element={<Strategy />} />
           <Route path="/intel" element={<IntelPage records={intelRecords} onDelete={deleteIntelRecord} />} />
           <Route path="/leads" element={
             <LeadGen leads={leads} setLeads={setLeads} leadHistory={leadHistory}
