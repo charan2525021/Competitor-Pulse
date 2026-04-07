@@ -30,6 +30,7 @@ export function saveStore(name: string, data: unknown): void {
     fs.writeFileSync(fp, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
     console.warn(`[Store] Failed to save ${name}:`, (err as Error).message);
+    
   }
 }
 
