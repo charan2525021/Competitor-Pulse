@@ -226,6 +226,5 @@ ${p.customFields ? `- Additional info: ${JSON.stringify(p.customFields)}` : ""}`
   const discoveryPrefix = needsUrlDiscovery
     ? `IMPORTANT: You are on the homepage of "${companyName}". First, navigate to find the correct page for this form type. Look for navigation links, footer links, or buttons that lead to the right page. Once you find the correct page with the form, proceed to fill it.\n\n`
     : "";
-
   return `${base}\n\n${discoveryPrefix}Task: ${typeInstructions[formType] || typeInstructions["custom"]}\n\n${instructions ? `Additional instructions: ${instructions}` : ""}`;
 }
