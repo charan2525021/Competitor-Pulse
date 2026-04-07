@@ -5,7 +5,7 @@ import { setLLMConfig } from "../llm/groq.client";
 import { executeIntelPlan } from "../services/agent.orchestrator";
 import type { CompetitorIntel } from "../services/agent.orchestrator";
 
-// In-memory store per run
+// In-memory store per run 
 const runStore = new Map<string, {
   logs: string[];
   done: boolean;
