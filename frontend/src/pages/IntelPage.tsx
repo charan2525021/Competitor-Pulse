@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { IntelRecord } from "../components/IntelDataPanel";
 import { AIParticles } from "../components/FishAnimation";
+import { ScrollReveal } from "../components/ScrollReveal";
 import {
   DollarSign, Briefcase, Star, FileText, Cpu, Share2,
   Trash2, ExternalLink, ChevronDown, Database, Building2,
@@ -119,8 +120,10 @@ export function IntelPage({ records, onDelete, isAdmin }: IntelPageProps) {
           </div>
         ) : (
           <div className="space-y-6">
-            {[...grouped.entries()].map(([company, recs]) => (
-              <CompanyGroup key={company} company={company} records={recs} onDelete={onDelete} isAdmin={isAdmin} />
+            {[...grouped.entries()].map(([company, recs], i) => (
+              <ScrollReveal key={company} animation="scroll-fade-up" delay={i * 80} threshold={0.08}>
+                <CompanyGroup company={company} records={recs} onDelete={onDelete} isAdmin={isAdmin} />
+              </ScrollReveal>
             ))}
           </div>
         )}
