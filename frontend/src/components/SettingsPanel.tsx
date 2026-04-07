@@ -22,6 +22,7 @@ interface SettingsPanelProps {
   filters: Filters;
   onChange: (filters: Filters) => void;
   scrollToSection?: string | null;
+  mode?: "all" | "keys-only" | "agent-only";
 }
 
 const PROVIDERS: { id: string; label: string; color: string; models: { id: string; label: string }[] }[] = [
@@ -172,31 +173,25 @@ function Dropdown({ value, onChange, options, accent }: {
   );
 }
 
-export function SettingsPanel({ filters, onChange, scrollToSection }: SettingsPanelProps) {
-  const [showKey, setShowKey] = useState(false);
-  const [showTfKey, setShowTfKey] = useState(false);
-  const llm = filters.llm || { provider: "groq", model: "llama-3.3-70b-versatile", apiKey: "" };
-  const tfKey = filters.tinyfishApiKey || "";
-
+export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all" }: SettingsPanelProps) {
   const toggleTask = (taskId: string) => {
     const tasks = filters.tasks.includes(taskId) ? filters.tasks.filter((t) => t !== taskId) : [...filters.tasks, taskId];
     onChange({ ...filters, tasks });
   };
 
-  const updateLLM = (key: keyof LLMConfig, value: string) => {
-    const updated = { ...llm, [key]: value };
-    if (key === "provider") {
-      const prov = PROVIDERS.find((p) => p.id === value);
-      updated.model = prov?.models[0]?.id || "";
-    }
-    onChange({ ...filters, llm: updated });
-  };
-
-  const currentProvider = PROVIDERS.find((p) => p.id === llm.provider) || PROVIDERS[0];
   const pct = (filters.maxCompetitors / 10) * 100;
   const lc = filters.maxCompetitors <= 3 ? "#22c55e" : filters.maxCompetitors <= 6 ? "#f59e0b" : "#ef4444";
-  const maskedKey = llm.apiKey ? "•".repeat(Math.min(llm.apiKey.length, 32)) : "";
-  const maskedTfKey = tfKey ? "•".repeat(Math.min(tfKey.length, 32)) : "";
+  const llm = filters.llm || { provider: "groq", model: "llama-3.3-70b-versatile", apiKey: "" };
+  const tfKey = filters.tinyfishApiKey || "";
+  const [showKey, setShowKey] = useState(false);
+  const [showTfKey, setShowTfKey] = useState(false);
+  const currentProvider = PROVIDERS.find((p) => p.id === llm.provider) || PROVIDERS[0];
+
+  const updateLLM = (key: keyof LLMConfig, value: string) => {
+    const updated = { ...llm, [key]: value };
+    if (key === "provider") { const prov = PROVIDERS.find((p) => p.id === value); updated.model = prov?.models[0]?.id || ""; }
+    onChange({ ...filters, llm: updated });
+  };
 
   return (
     <div className="space-y-3">
@@ -208,7 +203,8 @@ export function SettingsPanel({ filters, onChange, scrollToSection }: SettingsPa
         <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Configuration</h2>
       </div>
 
-      {/* LLM Provider + Model + Key */}
+      {/* LLM + TinyFish — shown in "all" and "keys-only" modes */}
+      {mode !== "agent-only" && (<>
       <Section id="llm" icon={<Brain size={14} />} title="LLM Settings" color={currentProvider.color} scrollToSection={scrollToSection}>
         <div className="space-y-3">
           <div>
@@ -226,57 +222,42 @@ export function SettingsPanel({ filters, onChange, scrollToSection }: SettingsPa
               <Key size={10} /> API Key
             </div>
             <div className="relative">
-              <input type={showKey ? "text" : "password"} value={showKey ? llm.apiKey : maskedKey}
+              <input type={showKey ? "text" : "password"} value={showKey ? llm.apiKey : llm.apiKey ? "•".repeat(Math.min(llm.apiKey.length, 32)) : ""}
                 onChange={(e) => updateLLM("apiKey", e.target.value)}
                 onFocus={() => setShowKey(true)} onBlur={() => setShowKey(false)}
                 placeholder={`Enter ${currentProvider.label} API key...`}
                 className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono"
                 style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }} />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                {llm.apiKey && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} title="Key set" />}
-                <button type="button" onClick={() => setShowKey(!showKey)}
-                  className="text-[9px] px-1.5 py-0.5 rounded font-medium transition-all"
-                  style={{ backgroundColor: "var(--bg-hover)", color: "var(--text-muted)" }}>
-                  {showKey ? "Hide" : "Show"}
-                </button>
+                {llm.apiKey && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />}
+                <button type="button" onClick={() => setShowKey(!showKey)} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                  style={{ backgroundColor: "var(--bg-hover)", color: "var(--text-muted)" }}>{showKey ? "Hide" : "Show"}</button>
               </div>
             </div>
-            <p className="text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
-              {llm.apiKey ? "Saved locally only" : `Required for ${currentProvider.label}`}
-            </p>
           </div>
         </div>
       </Section>
 
       {/* TinyFish API Key */}
       <Section id="tinyfish" icon={<Server size={14} />} title="TinyFish API" color="#0ea5e9" scrollToSection={scrollToSection}>
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-            <Key size={10} /> TinyFish API Key
+        <div className="relative">
+          <input type={showTfKey ? "text" : "password"} value={showTfKey ? tfKey : tfKey ? "•".repeat(Math.min(tfKey.length, 32)) : ""}
+            onChange={(e) => onChange({ ...filters, tinyfishApiKey: e.target.value })}
+            onFocus={() => setShowTfKey(true)} onBlur={() => setShowTfKey(false)}
+            placeholder="sk-tinyfish-..."
+            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono"
+            style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }} />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {tfKey && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />}
+            <button type="button" onClick={() => setShowTfKey(!showTfKey)} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+              style={{ backgroundColor: "var(--bg-hover)", color: "var(--text-muted)" }}>{showTfKey ? "Hide" : "Show"}</button>
           </div>
-          <div className="relative">
-            <input type={showTfKey ? "text" : "password"} value={showTfKey ? tfKey : maskedTfKey}
-              onChange={(e) => onChange({ ...filters, tinyfishApiKey: e.target.value })}
-              onFocus={() => setShowTfKey(true)} onBlur={() => setShowTfKey(false)}
-              placeholder="sk-tinyfish-..."
-              className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono"
-              style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }} />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {tfKey && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} title="Key set" />}
-              <button type="button" onClick={() => setShowTfKey(!showTfKey)}
-                className="text-[9px] px-1.5 py-0.5 rounded font-medium transition-all"
-                style={{ backgroundColor: "var(--bg-hover)", color: "var(--text-muted)" }}>
-                {showTfKey ? "Hide" : "Show"}
-              </button>
-            </div>
-          </div>
-          <p className="text-[9px] mt-1" style={{ color: "var(--text-muted)" }}>
-            {tfKey ? "Saved locally only" : "Required for web agent automation"}
-          </p>
         </div>
       </Section>
+      </>)}
 
-      {/* Max Competitors */}
+      {/* Max Competitors — shown in "all" and "agent-only" modes */}
+      {mode !== "keys-only" && (<>
       <Section id="competitors" icon={<Users size={14} />} title="Max Competitors" color="#3b82f6" scrollToSection={scrollToSection}>
         <div className="flex items-center gap-3">
           <div className="flex-1">
@@ -338,6 +319,7 @@ export function SettingsPanel({ filters, onChange, scrollToSection }: SettingsPa
           })}
         </div>
       </Section>
+      </>)}
     </div>
   );
 }
