@@ -6,6 +6,7 @@ import {
 import { StatCard } from "../components/StatCard";
 import { AIParticles } from "../components/FishAnimation";
 import { fetchDashboardStats } from "../services/api";
+import { ScrollReveal } from "../components/ScrollReveal";
 
 interface DashboardStats {
   totalScans: number;
@@ -62,6 +63,7 @@ export function Dashboard() {
 
       {/* Stat Cards */}
       {!loading && (
+      <ScrollReveal animation="scroll-fade-up">
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Total Scans" value={stats?.totalScans ?? 0} icon={<Radar size={20} />} color="blue" delay={0} />
         <StatCard label="Competitors" value={stats?.totalCompetitors ?? 0} icon={<TrendingUp size={20} />} color="purple" delay={1} />
@@ -69,12 +71,14 @@ export function Dashboard() {
         <StatCard label="Job Postings" value={stats?.totalJobs ?? 0} icon={<Briefcase size={20} />} color="orange" delay={3} />
         <StatCard label="Reviews Found" value={stats?.totalReviews ?? 0} icon={<Star size={20} />} color="purple" delay={4} />
       </div>
+      </ScrollReveal>
       )}
 
       {!loading && hasData ? (
         <>
           {/* Per-Scan Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ScrollReveal animation="scroll-fade-left" delay={0}>
             <DataCard title="Scan History" icon={<BarChart3 size={16} />} color="#3b82f6">
               <div className="space-y-2">
                 {stats.perScan.map((scan) => (
@@ -100,7 +104,9 @@ export function Dashboard() {
                 ))}
               </div>
             </DataCard>
+            </ScrollReveal>
 
+            <ScrollReveal animation="scroll-fade-right" delay={100}>
             <DataCard title="Competitors Tracked" icon={<Radar size={16} />} color="#8b5cf6">
               <div className="flex flex-wrap gap-2">
                 {stats.competitorNames.map((name) => (
@@ -111,7 +117,9 @@ export function Dashboard() {
                 ))}
               </div>
             </DataCard>
+            </ScrollReveal>
 
+            <ScrollReveal animation="scroll-fade-left" delay={200}>
             <DataCard title="Intelligence Breakdown" icon={<Activity size={16} />} color="#06b6d4">
               <div className="space-y-3">
                 <BarRow label="Pricing Pages" value={stats.totalPricingPages} max={stats.totalCompetitors} color="#22c55e" />
@@ -121,7 +129,9 @@ export function Dashboard() {
                 <BarRow label="Features" value={stats.totalFeatures} max={Math.max(stats.totalFeatures, 30)} color="#06b6d4" />
               </div>
             </DataCard>
+            </ScrollReveal>
 
+            <ScrollReveal animation="scroll-fade-right" delay={300}>
             <DataCard title="Data Coverage" icon={<TrendingUp size={16} />} color="#22c55e">
               <div className="grid grid-cols-2 gap-3">
                 <CoverageCircle label="Pricing" found={stats.totalPricingPages} total={stats.totalCompetitors} color="#22c55e" />
@@ -130,6 +140,7 @@ export function Dashboard() {
                 <CoverageCircle label="Blog" found={stats.perScan.filter((s) => s.blog > 0).length} total={stats.totalScans} color="#8b5cf6" />
               </div>
             </DataCard>
+            </ScrollReveal>
           </div>
         </>
       ) : !loading ? (
