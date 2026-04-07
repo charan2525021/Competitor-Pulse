@@ -7,6 +7,7 @@ import {
 import { LiveLogs } from "../components/LiveLogs";
 import { startLeadSearch, createLeadLogStream, fetchLeadResults, cancelLeadSearch } from "../services/api";
 import type { LogEntry } from "../hooks/useAgentLogs";
+import { ScrollReveal } from "../components/ScrollReveal";
 
 export interface Lead {
   id: string;
@@ -259,6 +260,7 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
       )}
 
       {/* Search */}
+      <ScrollReveal animation="scroll-fade-up">
       <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b" }}><Search size={13} /></span>
@@ -287,6 +289,7 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
         </div>
         {statusMsg && <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>{statusMsg}</p>}
       </div>
+      </ScrollReveal>
 
       {/* Live Logs */}
       {(logs.length > 0 || isSearching) && (
