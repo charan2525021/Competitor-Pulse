@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
-import { runTinyFishAgent, llmExtract } from "../services/tinyfish.service";
+import { runTinyFishAgent, llmExtract, cancelTinyFishRun } from "../services/tinyfish.service";
+import { setLLMConfig } from "../llm/groq.client";
+import { loadConfig } from "../services/store";
 
 // In-memory stores
 const leadRunStore = new Map<string, {
@@ -8,15 +10,25 @@ const leadRunStore = new Map<string, {
   done: boolean;
   leads: any[];
   abortController?: AbortController;
+  tinyFishRunId?: string;
 }>();
 
 export async function searchLeads(req: Request, res: Response) {
-  const { query } = req.body;
+  const { query, tinyfishApiKey } = req.body;
 
   if (!query) {
     res.status(400).json({ success: false, error: "Query is required" });
     return;
   }
+
+  // Set runtime TinyFish key
+  if (tinyfishApiKey) {
+    process.env.TINYFISH_API_KEY_RUNTIME = tinyfishApiKey;
+  }
+
+  // Set LLM config from stored settings
+  const cfg = loadConfig();
+  if (cfg?.llm?.apiKey) setLLMConfig(cfg.llm);
 
   const runId = uuid();
   const abortController = new AbortController();
@@ -38,7 +50,7 @@ export async function searchLeads(req: Request, res: Response) {
       (msg) => {
         run.logs.push(msg);
       },
-      { signal: abortController.signal }
+      { signal: abortController.signal, onRunId: (id) => { run.tinyFishRunId = id; } }
     );
 
     run.logs.push("Search complete — parsing results with AI...");
@@ -132,18 +144,27 @@ export function getLeadResults(req: Request, res: Response) {
   res.json({ success: true, leads: run.leads, done: run.done });
 }
 
-export function cancelLeadSearch(req: Request, res: Response) {
+export async function cancelLeadSearch(req: Request, res: Response) {
   const { runId } = req.params;
   const run = leadRunStore.get(runId as string);
   if (!run) {
     res.status(404).json({ success: false, error: "Run not found" });
     return;
   }
+  let tinyFishCancelled = false;
+  // Cancel TinyFish run on their server
+  if (run.tinyFishRunId) {
+    tinyFishCancelled = await cancelTinyFishRun(run.tinyFishRunId);
+    run.logs.push(tinyFishCancelled ? "TinyFish agent cancelled on server." : `TinyFish cancel attempted (runId: ${run.tinyFishRunId}) — check server logs.`);
+  } else {
+    run.logs.push("No TinyFish run ID captured — could not cancel remote execution. Stopping local stream only.");
+  }
   if (run.abortController) {
     run.abortController.abort();
     run.logs.push("Search cancelled by user.");
   }
-  res.json({ success: true, message: "Search cancelled" });
+  run.done = true;
+  res.json({ success: true, message: "Search cancelled", tinyFishCancelled, tinyFishRunId: run.tinyFishRunId || null });
 }
 
 export async function sendOutreach(req: Request, res: Response) {
