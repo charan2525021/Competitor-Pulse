@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
-import { runTinyFishAgent } from "../services/tinyfish.service";
+import { runTinyFishAgent, cancelTinyFishRun } from "../services/tinyfish.service";
 import { callGroq, setLLMConfig } from "../llm/groq.client";
 
-const strategyStore = new Map<string, { logs: string[]; done: boolean; result: any; abortController?: AbortController }>();
+const strategyStore = new Map<string, { logs: string[]; done: boolean; result: any; abortController?: AbortController; tinyFishRunId?: string }>();
 
 export async function runStrategy(req: Request, res: Response) {
   const { tool, input, llm, tinyfishApiKey } = req.body;
@@ -22,9 +22,9 @@ export async function runStrategy(req: Request, res: Response) {
 
   try {
     switch (tool) {
-      case "market": await marketBreakdown(input, log, ac.signal); break;
-      case "distribution": await distributionPlan(input, log, ac.signal); break;
-      case "weakness": await competitorWeakness(input, log, ac.signal); break;
+      case "market": await marketBreakdown(input, log, ac.signal, (id) => { run.tinyFishRunId = id; }); break;
+      case "distribution": await distributionPlan(input, log, ac.signal, (id) => { run.tinyFishRunId = id; }); break;
+      case "weakness": await competitorWeakness(input, log, ac.signal, (id) => { run.tinyFishRunId = id; }); break;
       default: log("Unknown tool"); break;
     }
   } catch (e) {
@@ -48,76 +48,67 @@ export async function runStrategy(req: Request, res: Response) {
 }
 
 // ── Market Breakdown: Scrape real market data ──
-async function marketBreakdown(niche: string, log: (m: string) => void, signal: AbortSignal) {
+async function marketBreakdown(niche: string, log: (m: string) => void, signal: AbortSignal, onRunId: (id: string) => void) {
   log(`Researching market for: ${niche}`);
 
-  // Scrape Google for market size data
   log("Searching for market size and trends...");
   await runTinyFishAgent("https://www.google.com",
     `Search for "${niche} market size 2025 2026 TAM". Read the top 3 results and note any market size numbers, growth rates, and trends you find.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
-  // Scrape ProductHunt for trending products
   log("Checking ProductHunt for trending products in this space...");
   await runTinyFishAgent("https://www.producthunt.com",
     `Search for "${niche}" on ProductHunt. Note the top 5 products, their upvote counts, and taglines.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
-  // Scrape Crunchbase for funding data
   log("Researching funding activity in this market...");
   await runTinyFishAgent("https://www.google.com",
     `Search for "${niche} startups funding 2025 2026 crunchbase". Read the results and note any recent funding rounds, amounts, and company names.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
   log("Market research data gathered");
 }
 
 // ── Distribution Plan: Scrape competitor channels ──
-async function distributionPlan(idea: string, log: (m: string) => void, signal: AbortSignal) {
+async function distributionPlan(idea: string, log: (m: string) => void, signal: AbortSignal, onRunId: (id: string) => void) {
   log(`Building distribution plan for: ${idea}`);
 
-  // Scrape competitor social presence
   log("Analyzing competitor distribution channels...");
   await runTinyFishAgent("https://www.google.com",
     `Search for "${idea} marketing strategy case study". Read the top 3 results and note the marketing channels, strategies, and tactics mentioned.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
-  // Check Reddit for community discussions
   log("Checking Reddit for community insights...");
   await runTinyFishAgent("https://www.reddit.com",
     `Search for "${idea}" on Reddit. Note the top subreddits discussing this topic, post engagement levels, and what people are asking about.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
-  // Check Twitter/X for content patterns
   log("Analyzing social media content patterns...");
   await runTinyFishAgent("https://www.google.com",
     `Search for "${idea} viral content strategy social media". Note the content formats, platforms, and strategies that work best.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
   log("Distribution research complete");
 }
 
 // ── Competitor Weakness Map: Deep competitor analysis ──
-async function competitorWeakness(niche: string, log: (m: string) => void, signal: AbortSignal) {
+async function competitorWeakness(niche: string, log: (m: string) => void, signal: AbortSignal, onRunId: (id: string) => void) {
   log(`Mapping competitor weaknesses in: ${niche}`);
 
-  // Find top competitors
   log("Identifying top competitors...");
   await runTinyFishAgent("https://www.google.com",
     `Search for "best ${niche} tools 2026" or "top ${niche} companies". List the top 5 competitors with their websites.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
-  // Check G2 for negative reviews
   log("Analyzing competitor reviews for weaknesses...");
   await runTinyFishAgent("https://www.g2.com",
     `Search for "${niche}" on G2. For the top 3 products, look at the "What do you dislike?" sections in recent reviews. Note common complaints and pain points.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
-  // Check competitor pricing gaps
   log("Analyzing pricing gaps...");
   await runTinyFishAgent("https://www.google.com",
     `Search for "${niche} pricing comparison". Note which competitors are expensive, which have limited free tiers, and where pricing gaps exist.`,
-    (m) => log(m), { signal });
+    (m) => log(m), { signal, onRunId });
 
   log("Competitor weakness research complete");
 }
@@ -203,10 +194,18 @@ export function streamStrategyLogs(req: Request, res: Response) {
   req.on("close", () => clearInterval(interval));
 }
 
-export function cancelStrategy(req: Request, res: Response) {
+export async function cancelStrategy(req: Request, res: Response) {
   const run = strategyStore.get(req.params.runId as string);
   if (!run) { res.status(404).json({ success: false }); return; }
+  let tinyFishCancelled = false;
+  if (run.tinyFishRunId) {
+    tinyFishCancelled = await cancelTinyFishRun(run.tinyFishRunId);
+    run.logs.push(tinyFishCancelled ? "TinyFish agent cancelled on server." : `TinyFish cancel attempted (runId: ${run.tinyFishRunId}).`);
+  } else {
+    run.logs.push("No TinyFish run ID captured — stopping local stream only.");
+  }
   run.abortController?.abort();
   run.logs.push("Cancelled by user");
-  res.json({ success: true });
+  run.done = true;
+  res.json({ success: true, tinyFishCancelled, tinyFishRunId: run.tinyFishRunId || null });
 }
