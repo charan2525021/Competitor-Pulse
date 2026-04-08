@@ -317,7 +317,7 @@ input[type="range"]::-moz-range-thumb {
 .landing-pricing-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 .landing-pricing-card.highlighted { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow-lg); }
 .landing-pricing-popular {
-  position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+  position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
   padding: 4px 16px; border-radius: 99px; font-size: 12px; font-weight: 700;
   background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; white-space: nowrap;
 }
