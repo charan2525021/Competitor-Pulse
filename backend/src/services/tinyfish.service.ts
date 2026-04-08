@@ -17,7 +17,7 @@ export async function runTinyFishAgent(
   url: string,
   goal: string,
   onStream?: (friendlyMsg: string, rawData?: any) => void,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; onRunId?: (runId: string) => void }
 ): Promise<any> {
   const apiKey = process.env.TINYFISH_API_KEY_RUNTIME || process.env.TINYFISH_API_KEY;
   if (!apiKey) {
@@ -59,6 +59,19 @@ export async function runTinyFishAgent(
     throw new Error("No response body from TinyFish");
   }
 
+  // Try to extract run ID from response headers
+  const headerRunId = response.headers.get("x-run-id") || response.headers.get("x-automation-id") || response.headers.get("x-execution-id") || response.headers.get("x-request-id");
+  if (headerRunId) {
+    console.log(`[TinyFish] Run ID from header: ${headerRunId}`);
+    options?.onRunId?.(headerRunId);
+  }
+
+  // Also log all response headers for debugging
+  console.log("[TinyFish] Response headers:");
+  response.headers.forEach((value, key) => {
+    console.log(`  ${key}: ${value}`);
+  });
+
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let finalResult: any = null;
@@ -87,6 +100,16 @@ export async function runTinyFishAgent(
         const friendly = toFriendlyMessage(parsed);
         if (friendly) {
           onStream?.(friendly, parsed);
+        }
+
+        // Log all event types and their keys for debugging
+        console.log(`[TinyFish] Event type=${parsed.type} keys=${Object.keys(parsed).join(",")}`);
+
+        // Capture TinyFish run ID — try every possible field name
+        const possibleId = parsed.runId || parsed.run_id || parsed.id || parsed.automationId || parsed.automation_id || parsed.sessionId || parsed.session_id || parsed.executionId || parsed.execution_id;
+        if (possibleId && typeof possibleId === "string" && possibleId.length > 5) {
+          console.log(`[TinyFish] Captured run ID: ${possibleId} from event type: ${parsed.type}`);
+          options?.onRunId?.(possibleId);
         }
 
         // Capture ALL progress messages — these often contain the actual scraped data
@@ -328,6 +351,30 @@ function extractJsonFromText(text: string): any[] {
   }
 
   return [];
+}
+
+/** Cancel a running TinyFish agent by its run ID */
+export async function cancelTinyFishRun(tinyFishRunId: string): Promise<boolean> {
+  const apiKey = process.env.TINYFISH_API_KEY_RUNTIME || process.env.TINYFISH_API_KEY;
+  if (!apiKey || !tinyFishRunId) {
+    console.warn(`[TinyFish] Cannot cancel — apiKey=${!!apiKey}, runId=${tinyFishRunId}`);
+    return false;
+  }
+  try {
+    console.log(`[TinyFish] Cancelling run: ${tinyFishRunId}`);
+    const res = await fetch(`https://agent.tinyfish.ai/v1/runs/${tinyFishRunId}/cancel`, {
+      method: "POST",
+      headers: { "X-API-Key": apiKey },
+    });
+    const status = res.status;
+    let body = "";
+    try { body = await res.text(); } catch {}
+    console.log(`[TinyFish] Cancel response: ${status} ${body}`);
+    return status >= 200 && status < 300;
+  } catch (err) {
+    console.warn(`[TinyFish] Failed to cancel run ${tinyFishRunId}:`, (err as Error).message);
+    return false;
+  }
 }
 
 function toFriendlyMessage(data: any): string | null {
