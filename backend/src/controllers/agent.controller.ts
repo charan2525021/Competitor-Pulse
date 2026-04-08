@@ -4,6 +4,7 @@ import { generatePlan } from "../llm/planner";
 import { setLLMConfig } from "../llm/groq.client";
 import { executeIntelPlan } from "../services/agent.orchestrator";
 import type { CompetitorIntel } from "../services/agent.orchestrator";
+import { cancelTinyFishRun } from "../services/tinyfish.service";
 
 // In-memory store per run 
 const runStore = new Map<string, {
@@ -11,6 +12,7 @@ const runStore = new Map<string, {
   done: boolean;
   reports: CompetitorIntel[];
   abortController?: AbortController;
+  tinyFishRunId?: string;
 }>();
 
 export async function startAgent(req: Request, res: Response) {
@@ -71,7 +73,7 @@ export async function startAgent(req: Request, res: Response) {
 
     const results = await executeIntelPlan(plan, (log) => {
       run.logs.push(log);
-    }, abortController.signal);
+    }, abortController.signal, (id) => { run.tinyFishRunId = id; });
 
     run.reports = results.reports;
     run.logs.push(`Intelligence report complete. ${results.reports.length} competitor${results.reports.length !== 1 ? "s" : ""} analyzed, ${results.activitiesCount} web actions performed.`);
@@ -152,18 +154,26 @@ export function getRunReports(req: Request, res: Response) {
   res.json({ success: true, reports: run.reports, done: run.done });
 }
 
-export function cancelAgent(req: Request, res: Response) {
+export async function cancelAgent(req: Request, res: Response) {
   const { runId } = req.params;
   const run = runStore.get(runId as string);
   if (!run) {
     res.status(404).json({ success: false, error: "Run not found" });
     return;
   }
+  let tinyFishCancelled = false;
+  if (run.tinyFishRunId) {
+    tinyFishCancelled = await cancelTinyFishRun(run.tinyFishRunId);
+    run.logs.push(tinyFishCancelled ? "TinyFish agent cancelled on server." : `TinyFish cancel attempted (runId: ${run.tinyFishRunId}) — check server logs.`);
+  } else {
+    run.logs.push("No TinyFish run ID captured — stopping local stream only.");
+  }
   if (run.abortController) {
     run.abortController.abort();
     run.logs.push("Agent stopped by user.");
   }
-  res.json({ success: true, message: "Agent cancelled" });
+  run.done = true;
+  res.json({ success: true, message: "Agent cancelled", tinyFishCancelled, tinyFishRunId: run.tinyFishRunId || null });
 }
 
 /** Expose all runs for dashboard aggregation */
