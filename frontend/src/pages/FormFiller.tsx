@@ -64,7 +64,7 @@ interface FormFillerProps {
   isAdmin?: boolean;
 }
 
-export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory, onFormFillDone, onDeleteFillHistory, isAdmin }: FormFillerProps) {
+export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory, onFormFillDone, onDeleteFillHistory, isAdmin: _isAdmin }: FormFillerProps) {
   const [companyName, setCompanyName] = useState("");
   const [selectedType, setSelectedType] = useState("demo-request");
   const [activeProfileId, setActiveProfileId] = useState(profiles[0]?.id || "");
@@ -205,11 +205,9 @@ export function FormFiller({ profiles, setProfiles, fillHistory, setFillHistory,
                       </div>
                     </div>
                     <ChevronDown size={13} style={{ color: "var(--text-muted)", transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.3s", flexShrink: 0 }} />
-                    {isAdmin && (
-                      <button onClick={(e) => { e.stopPropagation(); setFillHistory((prev) => prev.filter((x) => x.id !== h.id)); onDeleteFillHistory?.(h.id); }}
+                    <button onClick={(e) => { e.stopPropagation(); setFillHistory((prev) => prev.filter((x) => x.id !== h.id)); onDeleteFillHistory?.(h.id); }}
                         className="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                         style={{ color: "#ef4444" }}><Trash2 size={11} /></button>
-                    )}
                   </div>
                   {/* Dynamic fields — collapsed by default */}
                   {isExpanded && fieldsFilled.length > 0 && (
