@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
-import { runTinyFishAgent, llmExtract } from "../services/tinyfish.service";
-import { callGroq } from "../llm/groq.client";
+import { runTinyFishAgent, llmExtract, cancelTinyFishRun } from "../services/tinyfish.service";
+import { callGroq, setLLMConfig } from "../llm/groq.client";
+import { loadConfig } from "../services/store";
 
 // In-memory store
 const formRunStore = new Map<string, {
@@ -9,6 +10,7 @@ const formRunStore = new Map<string, {
   done: boolean;
   result: any;
   abortController?: AbortController;
+  tinyFishRunId?: string;
 }>();
 
 /**
@@ -74,7 +76,7 @@ URL:`;
 }
 
 export async function submitFormFill(req: Request, res: Response) {
-  const { companyName, url, formType, profile, instructions } = req.body;
+  const { companyName, url, formType, profile, instructions, tinyfishApiKey } = req.body;
 
   // Accept either companyName or url (backward compat)
   const target = companyName || url;
@@ -82,6 +84,15 @@ export async function submitFormFill(req: Request, res: Response) {
     res.status(400).json({ success: false, error: "Company name (or URL), formType, and profile are required" });
     return;
   }
+
+  // Set runtime TinyFish key
+  if (tinyfishApiKey) {
+    process.env.TINYFISH_API_KEY_RUNTIME = tinyfishApiKey;
+  }
+
+  // Set LLM config from stored settings
+  const cfg = loadConfig();
+  if (cfg?.llm?.apiKey) setLLMConfig(cfg.llm);
 
   const runId = uuid();
   const abortController = new AbortController();
@@ -114,7 +125,7 @@ export async function submitFormFill(req: Request, res: Response) {
       resolvedUrl,
       prompt,
       (msg) => { run.logs.push(msg); },
-      { signal: abortController.signal }
+      { signal: abortController.signal, onRunId: (id) => { run.tinyFishRunId = id; } }
     );
 
     run.logs.push("Analyzing form submission result...");
@@ -188,15 +199,23 @@ export function streamFormLogs(req: Request, res: Response) {
   req.on("close", () => { clearInterval(interval); });
 }
 
-export function cancelFormFill(req: Request, res: Response) {
+export async function cancelFormFill(req: Request, res: Response) {
   const { runId } = req.params;
   const run = formRunStore.get(runId as string);
   if (!run) { res.status(404).json({ success: false, error: "Run not found" }); return; }
+  let tinyFishCancelled = false;
+  if (run.tinyFishRunId) {
+    tinyFishCancelled = await cancelTinyFishRun(run.tinyFishRunId);
+    run.logs.push(tinyFishCancelled ? "TinyFish agent cancelled on server." : `TinyFish cancel attempted (runId: ${run.tinyFishRunId}) — check server logs.`);
+  } else {
+    run.logs.push("No TinyFish run ID captured — stopping local stream only.");
+  }
   if (run.abortController) {
     run.abortController.abort();
     run.logs.push("Form fill cancelled by user.");
   }
-  res.json({ success: true, message: "Cancelled" });
+  run.done = true;
+  res.json({ success: true, message: "Cancelled", tinyFishCancelled, tinyFishRunId: run.tinyFishRunId || null });
 }
 
 function buildFormPrompt(formType: string, profile: any, instructions?: string, companyName?: string, needsUrlDiscovery?: boolean): string {
