@@ -8,6 +8,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import formsRoutes from "./routes/forms.routes";
 import storeRoutes from "./routes/store.routes";
 import strategyRoutes from "./routes/strategy.routes";
+import outreachRoutes from "./routes/outreach.routes";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -23,6 +24,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/forms", formsRoutes);
 app.use("/api/store", storeRoutes);
 app.use("/api/strategy", strategyRoutes);
+app.use("/api/outreach", outreachRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
