@@ -46,10 +46,12 @@ export function createLogStream(
 /* ── Lead Search SSE ── */
 
 export async function startLeadSearch(query: string) {
+  let tinyfishApiKey = "";
+  try { const cfg = JSON.parse(localStorage.getItem("cp_filters") || "{}"); tinyfishApiKey = cfg.tinyfishApiKey || ""; } catch {}
   const res = await fetch(`${API_BASE}/leads/search`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, tinyfishApiKey }),
   });
   return res.json();
 }
@@ -96,10 +98,12 @@ export async function cancelAgent(runId: string) {
 /* ── Form Filler ── */
 
 export async function startFormFill(companyName: string, formType: string, profile: Record<string, any>, instructions?: string) {
+  let tinyfishApiKey = "";
+  try { const cfg = JSON.parse(localStorage.getItem("cp_filters") || "{}"); tinyfishApiKey = cfg.tinyfishApiKey || ""; } catch {}
   const res = await fetch(`${API_BASE}/forms/fill`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ companyName, formType, profile, instructions }),
+    body: JSON.stringify({ companyName, formType, profile, instructions, tinyfishApiKey }),
   });
   return res.json();
 }
@@ -207,5 +211,59 @@ export function createStrategyLogStream(
 
 export async function cancelStrategy(runId: string) {
   const res = await fetch(`${API_BASE}/strategy/cancel/${runId}`, { method: "POST" });
+  return res.json();
+}
+
+
+/* ── Outreach / Campaigns ── */
+
+export async function saveSenderIdentity(fromName: string, fromEmail: string, useGmailSmtp: boolean, gmailAppPassword?: string) {
+  const res = await fetch(`${API_BASE}/outreach/senders`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fromName, fromEmail, useGmailSmtp, gmailAppPassword }),
+  });
+  return res.json();
+}
+
+export async function getSenderIdentities() {
+  const res = await fetch(`${API_BASE}/outreach/senders`);
+  return res.json();
+}
+
+export async function deleteSenderApi(id: string) {
+  const res = await fetch(`${API_BASE}/outreach/senders/${id}`, { method: "DELETE" });
+  return res.json();
+}
+
+export async function createCampaignApi(data: {
+  name: string; subject: string; body: string;
+  senderId: string; leads: any[];
+}) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function getCampaignsApi() {
+  const res = await fetch(`${API_BASE}/outreach/campaigns`);
+  return res.json();
+}
+
+export async function deleteCampaignApi(id: string) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns/${id}`, { method: "DELETE" });
+  return res.json();
+}
+
+export async function sendCampaignApi(id: string) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns/${id}/send`, { method: "POST" });
+  return res.json();
+}
+
+export async function getCampaignLogsApi(id: string) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns/${id}/logs`);
   return res.json();
 }
