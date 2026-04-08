@@ -8,13 +8,14 @@ import type { FormProfile, FormFillRecord } from "./pages/FormFiller";
 import { IntelPage } from "./pages/IntelPage";
 import { Docs } from "./pages/Docs";
 import { Strategy } from "./pages/Strategy";
+import type { StrategyHistoryItem } from "./pages/Strategy";
 import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import {
   Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database,
-  BookOpen, Target, PanelLeftClose, PanelLeftOpen, Settings, Brain, Fish, LogOut, User, Shield, Clock, Mail, Phone, Pencil, Check, X,
+  BookOpen, Target, PanelLeftClose, PanelLeftOpen, Settings, Brain, Fish, LogOut, User, Shield, Clock, Mail, Phone, Pencil, Check, X, Trash2,
 } from "lucide-react";
 import type { HistoryItem } from "./components/HistoryList";
 import type { Filters } from "./components/SettingsPanel";
@@ -71,13 +72,15 @@ function App() {
   const [formProfiles, setFormProfiles] = useState<FormProfile[]>(() => loadJSON("cp_formProfiles", [{ id:"default",name:"Default Profile",fullName:"",email:"",phone:"",company:"",jobTitle:"",website:"",message:"" }]));
   const [fillHistory, setFillHistory] = useState<FormFillRecord[]>(() => loadJSON("cp_fillHistory", []));
   const [leadRunId, setLeadRunId] = useState<string | null>(() => loadJSON("cp_leadRunId", null));
+  const [strategyHistory, setStrategyHistory] = useState<StrategyHistoryItem[]>(() => loadJSON("cp_strategyHistory", []));
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => { (async () => { try {
-    const [cfg,h,i,l,lh,fp,fh] = await Promise.all([bLoadCfg(),bLoad("history"),bLoad("intel"),bLoad("leads"),bLoad("leadHistory"),bLoad("formProfiles"),bLoad("fillHistory")]);
+    const [cfg,h,i,l,lh,fp,fh,sh] = await Promise.all([bLoadCfg(),bLoad("history"),bLoad("intel"),bLoad("leads"),bLoad("leadHistory"),bLoad("formProfiles"),bLoad("fillHistory"),bLoad("strategyHistory")]);
     if(cfg) setFilters({tasks:cfg.tasks||["pricing","jobs","reviews","blog"],maxCompetitors:cfg.maxCompetitors||3,executionMode:cfg.executionMode||"headless",llm:cfg.llm?{...DL,...cfg.llm}:DL,tinyfishApiKey:cfg.tinyfishApiKey||""});
     if(h?.length) setHistory(h); if(i?.length) setIntelRecords(i); if(l?.length) setLeads(l);
     if(lh?.length) setLeadHistory(lh); if(fp?.length) setFormProfiles(fp); if(fh?.length) setFillHistory(fh);
+    if(sh?.length) setStrategyHistory(sh);
   } catch(e){console.warn("Backend load failed:",e);} setLoaded(true); })(); }, []);
 
   useEffect(()=>{saveJSON("cp_runId",runId);},[runId]);
@@ -89,11 +92,20 @@ function App() {
   useEffect(()=>{if(loaded){saveJSON("cp_formProfiles",formProfiles);bSave("formProfiles",formProfiles);}},[formProfiles,loaded]);
   useEffect(()=>{if(loaded){saveJSON("cp_fillHistory",fillHistory);bSave("fillHistory",fillHistory);}},[fillHistory,loaded]);
   useEffect(()=>{saveJSON("cp_leadRunId",leadRunId);},[leadRunId]);
+  useEffect(()=>{if(loaded){saveJSON("cp_strategyHistory",strategyHistory);bSave("strategyHistory",strategyHistory);}},[strategyHistory,loaded]);
 
   const isAdmin = user?.role === "admin";
   const deleteIntelRecord = useCallback((id: string) => setIntelRecords(p=>p.filter(r=>r.id!==id)), []);
   const deleteHistory = useCallback((tid: string) => { setHistory(p=>p.filter(h=>h.runId!==tid)); if(runId===tid) setRunId(null); }, [runId]);
   const deleteLeadHistory = useCallback((id: string) => setLeadHistory(p=>p.filter(h=>h.id!==id)), []);
+  const deleteFillHistory = useCallback((id: string) => setFillHistory(p=>p.filter(h=>h.id!==id)), []);
+  const clearAllData = useCallback(() => {
+    setHistory([]); setIntelRecords([]); setLeads([]); setLeadHistory([]);
+    setFormProfiles([{id:"default",name:"Default Profile",fullName:"",email:"",phone:"",company:"",jobTitle:"",website:"",message:""}]);
+    setFillHistory([]); setRunId(null); setLeadRunId(null); setStrategyHistory([]);
+    ["cp_history","cp_intel","cp_leads","cp_leadHistory","cp_fillHistory","cp_formProfiles","cp_runId","cp_leadRunId","cp_intel_pushed","cp_strategyHistory"].forEach(k=>localStorage.removeItem(k));
+    Promise.all(["history","intel","leads","leadHistory","fillHistory","formProfiles","strategyHistory"].map(c=>bSave(c,[])));
+  }, []);
   const addReportsToIntel = useCallback((reports: any[]) => {
     const nr: IntelRecord[]=[];
     for(const r of reports){const b={company:r.company||"Unknown",scanDate:new Date().toISOString()};
@@ -107,6 +119,14 @@ function App() {
   }, []);
   const addLeadsToIntel = useCallback((fl: Lead[],q: string) => {if(!fl.length)return;setIntelRecords(p=>{const u=[{id:crypto.randomUUID(),company:q,scanDate:new Date().toISOString(),type:"leads" as const,data:fl},...p];saveJSON("cp_intel",u);return u;});}, []);
   const addFormFillToIntel = useCallback((fr: FormFillRecord) => {if(fr.status==="running")return;let co=fr.url;try{if(fr.url.startsWith("http"))co=new URL(fr.url).hostname.replace("www.","");}catch{}setIntelRecords(p=>{const u=[{id:crypto.randomUUID(),company:co,scanDate:fr.timestamp,type:"forms" as const,data:fr},...p];saveJSON("cp_intel",u);return u;});}, []);
+  const addStrategyToIntel = useCallback((tool: string, input: string, result: any) => {
+    if (!result) return;
+    const toolLabel = tool === "market" ? "Market Breakdown" : tool === "distribution" ? "Distribution Plan" : "Competitor Weakness Map";
+    setIntelRecords(p => {
+      const u = [{ id: crypto.randomUUID(), company: `${toolLabel}: ${input}`, scanDate: new Date().toISOString(), type: "strategy" as const, data: result }, ...p];
+      saveJSON("cp_intel", u); return u;
+    });
+  }, []);
 
   // ── Auth gate: show landing or login if not authenticated ──
   if (!isAuthenticated) {
@@ -317,10 +337,10 @@ function App() {
                 <Route path="/" element={<Home runId={runId} setRunId={setRunId} history={history} setHistory={setHistory} filters={filters} setFilters={setFilters} onReportsReady={addReportsToIntel} onDeleteHistory={deleteHistory} isAdmin={isAdmin} />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/docs" element={<Docs />} />
-                <Route path="/strategy" element={<Strategy />} />
+                <Route path="/strategy" element={<Strategy strategyHistory={strategyHistory} setStrategyHistory={setStrategyHistory} onResultReady={addStrategyToIntel} />} />
                 <Route path="/intel" element={<IntelPage records={intelRecords} onDelete={deleteIntelRecord} isAdmin={isAdmin} />} />
                 <Route path="/leads" element={<LeadGen leads={leads} setLeads={setLeads} leadHistory={leadHistory} setLeadHistory={setLeadHistory} onDeleteHistory={deleteLeadHistory} leadRunId={leadRunId} setLeadRunId={setLeadRunId} onLeadsReady={addLeadsToIntel} isAdmin={isAdmin} />} />
-                <Route path="/forms" element={<FormFiller profiles={formProfiles} setProfiles={setFormProfiles} fillHistory={fillHistory} setFillHistory={setFillHistory} onFormFillDone={addFormFillToIntel} isAdmin={isAdmin} />} />
+                <Route path="/forms" element={<FormFiller profiles={formProfiles} setProfiles={setFormProfiles} fillHistory={fillHistory} setFillHistory={setFillHistory} onFormFillDone={addFormFillToIntel} onDeleteFillHistory={deleteFillHistory} isAdmin={isAdmin} />} />
               </Routes>
             </main>
 
@@ -329,6 +349,16 @@ function App() {
               <aside className="w-80 shrink-0 border-l overflow-y-auto p-4 animate-slide-right"
                 style={{ backgroundColor: "var(--bg-sidebar)", borderColor: "var(--border)" }}>
                 <SettingsPanel filters={filters} onChange={setFilters} mode="keys-only" />
+                {isAdmin && (
+                  <div className="mt-6 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Admin — Danger Zone</div>
+                    <button onClick={() => { if (window.confirm("Delete ALL data? This removes all history, leads, intel records, campaigns, and fill history. This cannot be undone.")) clearAllData(); }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 hover:scale-[1.02]"
+                      style={{ backgroundColor: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1.5px solid rgba(239,68,68,0.2)" }}>
+                      <Trash2 size={14} /> Clear All Data
+                    </button>
+                  </div>
+                )}
               </aside>
             )}
           </div>
