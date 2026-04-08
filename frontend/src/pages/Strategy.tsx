@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   TrendingUp, Target, Crosshair, Loader2, Send, XCircle,
-  DollarSign, ArrowRight, Zap, Globe, ChevronDown, Megaphone,
+  DollarSign, ArrowRight, Zap, Globe, ChevronDown, Megaphone, Clock, Trash2,
 } from "lucide-react";
 import { LiveLogs } from "../components/LiveLogs";
 import { startStrategy, createStrategyLogStream, cancelStrategy } from "../services/api";
@@ -29,7 +29,22 @@ const TOOLS = [
   },
 ];
 
-export function Strategy() {
+export interface StrategyHistoryItem {
+  id: string;
+  tool: string;
+  input: string;
+  timestamp: string;
+  status: "running" | "done" | "failed";
+  result?: any;
+}
+
+interface StrategyProps {
+  strategyHistory: StrategyHistoryItem[];
+  setStrategyHistory: React.Dispatch<React.SetStateAction<StrategyHistoryItem[]>>;
+  onResultReady?: (tool: string, input: string, result: any) => void;
+}
+
+export function Strategy({ strategyHistory, setStrategyHistory, onResultReady }: StrategyProps) {
   const [activeTool, setActiveTool] = useState(() => ssGet("strat_tool", "market"));
   const [input, setInput] = useState(() => ssGet("strat_input", ""));
   const [isRunning, setIsRunning] = useState(() => !!ssGet<string | null>("strat_runId", null));
@@ -45,6 +60,8 @@ export function Strategy() {
   useEffect(() => { ssSet("strat_logs", logs); }, [logs]);
   useEffect(() => { ssSet("strat_result", result); }, [result]);
 
+  const currentHistoryIdRef = useRef<string | null>(null);
+
   const connectStream = useCallback((runId: string) => {
     esRef.current?.close();
     const es = createStrategyLogStream(runId,
@@ -52,11 +69,24 @@ export function Strategy() {
       (res) => {
         setIsRunning(false);
         ssSet("strat_runId", null);
-        if (res) { setResult(res); setShowResult(true); }
+        if (res) {
+          setResult(res);
+          setShowResult(true);
+          // Update history status
+          if (currentHistoryIdRef.current) {
+            setStrategyHistory((prev) => prev.map((h) => h.id === currentHistoryIdRef.current ? { ...h, status: "done" as const, result: res } : h));
+          }
+          // Push to intel
+          onResultReady?.(activeTool, input, res);
+        } else {
+          if (currentHistoryIdRef.current) {
+            setStrategyHistory((prev) => prev.map((h) => h.id === currentHistoryIdRef.current ? { ...h, status: "failed" as const } : h));
+          }
+        }
       }
     );
     esRef.current = es;
-  }, []);
+  }, [activeTool, input, onResultReady, setStrategyHistory]);
 
   // Reconnect to an active run on mount (handles refresh / tab switch)
   useEffect(() => {
@@ -78,6 +108,10 @@ export function Strategy() {
     setLogs([]);
     setResult(null);
     setShowResult(false);
+
+    const historyId = crypto.randomUUID();
+    currentHistoryIdRef.current = historyId;
+    setStrategyHistory((prev) => [{ id: historyId, tool: activeTool, input: input.trim(), timestamp: new Date().toISOString(), status: "running" as const }, ...prev]);
 
     try {
       // Read config from localStorage for API keys
@@ -118,6 +152,34 @@ export function Strategy() {
           <p className="text-xs" style={{ color: "var(--text-muted)" }}>AI-powered market analysis with real web research</p>
         </div>
       </div>
+
+      {/* Strategy History */}
+      {strategyHistory.length > 0 && (
+        <div className="rounded-2xl p-4" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#ef4444" }}><Clock size={13} /></span>
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Analysis History</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {strategyHistory.map((h) => {
+              const t = TOOLS.find((t) => t.id === h.tool);
+              const dotColor = h.status === "running" ? "#eab308" : h.status === "done" ? "#22c55e" : "#ef4444";
+              return (
+                <div key={h.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition-all duration-200 group cursor-pointer"
+                  style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}
+                  onClick={() => { if (h.result) { setResult(h.result); setShowResult(true); setActiveTool(h.tool); setInput(h.input); } }}>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${h.status === "running" ? "animate-pulse-dot" : ""}`} style={{ backgroundColor: dotColor }} />
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-bold" style={{ backgroundColor: `${t?.color || "#ef4444"}15`, color: t?.color || "#ef4444" }}>{t?.label || h.tool}</span>
+                  <span className="font-medium truncate max-w-[160px]" style={{ color: "var(--text-primary)" }} title={h.input}>{h.input}</span>
+                  <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{new Date(h.timestamp).toLocaleDateString()}</span>
+                  <button onClick={(e) => { e.stopPropagation(); setStrategyHistory((prev) => prev.filter((x) => x.id !== h.id)); }}
+                    className="w-4 h-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110" style={{ color: "#ef4444" }}><Trash2 size={10} /></button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Tool Selector */}
       <div className="grid grid-cols-3 gap-3">
