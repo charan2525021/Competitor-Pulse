@@ -20,7 +20,7 @@ export interface AgentResult {
 
 type LogFn = (message: string) => void;
 
-export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: AbortSignal): Promise<AgentResult> {
+export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: AbortSignal, onRunId?: (id: string) => void): Promise<AgentResult> {
   const reports: CompetitorIntel[] = [];
   let activitiesCount = 0;
 
@@ -45,27 +45,27 @@ export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: A
       try {
         switch (task) {
           case "pricing":
-            intel.pricing = await scrapePricing(competitor, onLog, signal);
+            intel.pricing = await scrapePricing(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
           case "jobs":
-            intel.jobs = await scrapeJobs(competitor, onLog, signal);
+            intel.jobs = await scrapeJobs(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
           case "reviews":
-            intel.reviews = await scrapeReviews(competitor, onLog, signal);
+            intel.reviews = await scrapeReviews(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
           case "blog":
-            intel.blog = await scrapeBlog(competitor, onLog, signal);
+            intel.blog = await scrapeBlog(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
           case "features":
-            intel.features = await scrapeFeatures(competitor, onLog, signal);
+            intel.features = await scrapeFeatures(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
           case "social":
-            intel.social = await scrapeSocial(competitor, onLog, signal);
+            intel.social = await scrapeSocial(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
         }
@@ -96,7 +96,8 @@ export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: A
 async function scrapePricing(
   competitor: { name: string; url: string },
   onLog: LogFn,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
 ): Promise<any> {
   onLog(`Checking pricing page for ${competitor.name}`);
   await insertActivity({ action: "pricing", status: "pending", details: { company: competitor.name } });
@@ -107,7 +108,7 @@ async function scrapePricing(
 
 IMPORTANT: After reading the pricing page, your FINAL step must be to summarize what you found. List each plan name, its price, and billing period. For example: "Free plan: $0/mo, Pro plan: $8.75/mo billed annually, Business plan: $15/mo billed annually, Enterprise: Contact sales". Include as much detail as you can read from the page.`,
     (msg) => onLog(msg),
-    { signal }
+    { signal, onRunId }
   );
 
   // Try direct extraction first
@@ -158,7 +159,8 @@ IMPORTANT: Use your knowledge of ${competitor.name}'s actual pricing. The agent 
 async function scrapeJobs(
   competitor: { name: string; url: string },
   onLog: LogFn,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
 ): Promise<any[]> {
   onLog(`Checking job postings for ${competitor.name}`);
   await insertActivity({ action: "jobs", status: "pending", details: { company: competitor.name } });
@@ -167,7 +169,7 @@ async function scrapeJobs(
     competitor.url,
     `Go to the careers or jobs page of this website (look for "Careers", "Jobs", "We're Hiring" links). Once there, read the list of open positions. For each position, note the job title, department/team, and location. List up to 15 positions you can see on the page.`,
     (msg) => onLog(msg),
-    { signal }
+    { signal, onRunId }
   );
 
   let jobs = extractResultData(result);
@@ -197,7 +199,8 @@ Provide realistic job listings for ${competitor.name} based on what you know abo
 async function scrapeReviews(
   competitor: { name: string; url: string },
   onLog: LogFn,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
 ): Promise<any> {
   onLog(`Checking reviews for ${competitor.name} on G2`);
   await insertActivity({ action: "reviews", status: "pending", details: { company: competitor.name } });
@@ -206,7 +209,7 @@ async function scrapeReviews(
     "https://www.g2.com",
     `Go to G2.com and search for "${competitor.name}" using the search bar. Click on the product result. On the product page, read the overall star rating, total number of reviews, and the most recent 3 review titles and summaries. Note any ratings and review text you can see.`,
     (msg) => onLog(msg),
-    { signal }
+    { signal, onRunId }
   );
 
   let data = extractResultData(result);
@@ -244,7 +247,8 @@ Provide realistic G2 review data for ${competitor.name}. Include the overall rat
 async function scrapeBlog(
   competitor: { name: string; url: string },
   onLog: LogFn,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
 ): Promise<any[]> {
   onLog(`Checking blog and announcements for ${competitor.name}`);
   await insertActivity({ action: "blog", status: "pending", details: { company: competitor.name } });
@@ -253,7 +257,7 @@ async function scrapeBlog(
     competitor.url,
     `Go to the blog or changelog page of this website (look for "Blog", "News", "Changelog", "Updates" links). Read the 5 most recent post titles, their dates, and a brief summary of each. List them out.`,
     (msg) => onLog(msg),
-    { signal }
+    { signal, onRunId }
   );
 
   let posts = extractResultData(result);
@@ -278,7 +282,8 @@ Provide realistic recent blog posts for ${competitor.name}. Include 3-5 posts wi
 async function scrapeFeatures(
   competitor: { name: string; url: string },
   onLog: LogFn,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
 ): Promise<string[]> {
   onLog(`Extracting key features for ${competitor.name}`);
   await insertActivity({ action: "features", status: "pending", details: { company: competitor.name } });
@@ -287,7 +292,7 @@ async function scrapeFeatures(
     competitor.url,
     `Go to the features or product page of this website (look for "Features", "Product", "Platform" links). Read the main feature categories and capabilities listed on the page. List each feature you can see.`,
     (msg) => onLog(msg),
-    { signal }
+    { signal, onRunId }
   );
 
   let features = extractResultData(result);
@@ -317,7 +322,8 @@ List the main product features and capabilities of ${competitor.name}. Include 5
 async function scrapeSocial(
   competitor: { name: string; url: string },
   onLog: LogFn,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
 ): Promise<any> {
   onLog(`Checking social media presence for ${competitor.name}`);
   await insertActivity({ action: "social", status: "pending", details: { company: competitor.name } });
@@ -326,7 +332,7 @@ async function scrapeSocial(
     competitor.url,
     `Find the social media links for this company. Look in the website footer, header, or "About" / "Contact" pages for links to Twitter/X, LinkedIn, Facebook, Instagram, YouTube, and any other social platforms. Extract each social media platform name and its URL. Also look for follower counts if visible. Return the data you find.`,
     (msg) => onLog(msg),
-    { signal }
+    { signal, onRunId }
   );
 
   let data = extractResultData(result);
