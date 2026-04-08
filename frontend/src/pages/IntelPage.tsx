@@ -5,7 +5,7 @@ import { ScrollReveal } from "../components/ScrollReveal";
 import {
   DollarSign, Briefcase, Star, FileText, Cpu, Share2,
   Trash2, ExternalLink, ChevronDown, Database, Building2,
-  MapPin, Calendar, Users, Mail,
+  MapPin, Calendar, Users, Mail, Target,
 } from "lucide-react";
 
 interface IntelPageProps {
@@ -24,6 +24,7 @@ const TABS = [
   { id: "social" as const, label: "Social", icon: <Share2 size={14} />, color: "#ec4899" },
   { id: "leads" as const, label: "Leads", icon: <Users size={14} />, color: "#f59e0b" },
   { id: "forms" as const, label: "Forms", icon: <Mail size={14} />, color: "#6366f1" },
+  { id: "strategy" as const, label: "Strategy", icon: <Target size={14} />, color: "#ef4444" },
 ];
 
 export function IntelPage({ records, onDelete, isAdmin }: IntelPageProps) {
@@ -429,6 +430,40 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
             </div>
           );
         })}
+      </div>
+    );
+  }
+
+  if (type === "strategy") {
+    return (
+      <div className="space-y-3">
+        {data.title && <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{data.title}</div>}
+        {data.summary && <div className="text-xs" style={{ color: "var(--text-secondary)" }}>{data.summary}</div>}
+        {data.tam && (
+          <div className="grid grid-cols-3 gap-2">
+            {[{ label: "TAM", ...data.tam }, { label: "SAM", ...data.sam }, { label: "SOM", ...data.som }].filter(m => m.value).map((m) => (
+              <div key={m.label} className="rounded-lg p-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                <div className="text-[9px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>{m.label}</div>
+                <div className="text-base font-bold" style={{ color: "#22c55e" }}>{m.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {data.trends && <div className="space-y-1">{data.trends.slice(0, 3).map((t: any, i: number) => (
+          <div key={i} className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "var(--bg-card)" }}>
+            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{t.trend}</span>
+            {t.impact && <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: t.impact === "High" ? "rgba(239,68,68,0.1)" : "rgba(59,130,246,0.1)", color: t.impact === "High" ? "#ef4444" : "#3b82f6" }}>{t.impact}</span>}
+          </div>
+        ))}</div>}
+        {data.competitors && <div className="space-y-1">{data.competitors.slice(0, 3).map((c: any, i: number) => (
+          <div key={i} className="text-xs px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "var(--bg-card)" }}>
+            <Target size={10} style={{ color: "#ef4444" }} />
+            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.name}</span>
+          </div>
+        ))}</div>}
+        {data.channels && <div className="flex flex-wrap gap-1">{data.channels.slice(0, 5).map((c: any, i: number) => (
+          <span key={i} className="text-[10px] px-2 py-1 rounded-lg" style={{ backgroundColor: "rgba(59,130,246,0.08)", color: "#3b82f6" }}>{c.channel}</span>
+        ))}</div>}
       </div>
     );
   }
