@@ -8,7 +8,7 @@ export interface IntelRecord {
   id: string;
   company: string;
   scanDate: string;
-  type: "pricing" | "jobs" | "reviews" | "blog" | "features" | "social" | "leads" | "forms";
+  type: "pricing" | "jobs" | "reviews" | "blog" | "features" | "social" | "leads" | "forms" | "strategy";
   data: any;
 }
 
