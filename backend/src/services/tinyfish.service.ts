@@ -105,9 +105,18 @@ export async function runTinyFishAgent(
         // Log all event types and their keys for debugging
         console.log(`[TinyFish] Event type=${parsed.type} keys=${Object.keys(parsed).join(",")}`);
 
-        // Capture TinyFish run ID — try every possible field name
-        const possibleId = parsed.runId || parsed.run_id || parsed.id || parsed.automationId || parsed.automation_id || parsed.sessionId || parsed.session_id || parsed.executionId || parsed.execution_id;
-        if (possibleId && typeof possibleId === "string" && possibleId.length > 5) {
+        // Special handling for STREAMING_URL — always forward it
+        if (parsed.type === "STREAMING_URL") {
+          const streamUrl = parsed.streaming_url || parsed.url || parsed.streamingUrl;
+          console.log(`[TinyFish] STREAMING_URL event — url: ${streamUrl}`);
+          if (streamUrl) {
+            onStream?.(`🔴 Live view available: ${streamUrl}`, parsed);
+          }
+        }
+
+        // Capture TinyFish run ID — the field is "run_id" per their docs
+        const possibleId = parsed.run_id || parsed.runId || parsed.id;
+        if (possibleId && typeof possibleId === "string" && possibleId.length > 3) {
           console.log(`[TinyFish] Captured run ID: ${possibleId} from event type: ${parsed.type}`);
           options?.onRunId?.(possibleId);
         }
@@ -382,7 +391,11 @@ function toFriendlyMessage(data: any): string | null {
     case "STARTED":
       return "AI agent started working";
     case "STREAMING_URL":
-      return "Connected to live browser session";
+      return data.streaming_url
+        ? `🔴 Live view available: ${data.streaming_url}`
+        : data.url
+          ? `🔴 Live view available: ${data.url}`
+          : "Connected to live browser session";
     case "PROGRESS":
       return data.purpose || data.message || "Working...";
     case "HEARTBEAT":
