@@ -80,10 +80,24 @@ function LogRow({ log, index, skipAnimation }: { log: LogEntry; index: number; s
           {label}
         </span>
         <span className="flex-1 text-sm truncate" style={{ color: "var(--text-primary)" }}>
-          {displayedText}
-          {!doneTyping && (
-            <span className="inline-block w-1.5 h-3.5 ml-0.5 rounded-sm animate-pulse"
-              style={{ backgroundColor: color, verticalAlign: "text-bottom" }} />
+          {displayedText.includes("Live view available: ") ? (
+            <>
+              <span>🔴 Live view: </span>
+              <a href={displayedText.split("Live view available: ")[1]} target="_blank" rel="noopener noreferrer"
+                className="underline font-medium hover:opacity-80 transition-opacity"
+                style={{ color: "#3b82f6" }}
+                onClick={(e) => e.stopPropagation()}>
+                Open in new tab ↗
+              </a>
+            </>
+          ) : (
+            <>
+              {displayedText}
+              {!doneTyping && (
+                <span className="inline-block w-1.5 h-3.5 ml-0.5 rounded-sm animate-pulse"
+                  style={{ backgroundColor: color, verticalAlign: "text-bottom" }} />
+              )}
+            </>
           )}
         </span>
         {doneTyping && <span className="log-scan-bar shrink-0" style={{ backgroundColor: color }} />}
@@ -97,18 +111,36 @@ function LogRow({ log, index, skipAnimation }: { log: LogEntry; index: number; s
       {expanded && (
         <div className="ml-10 mr-3 mb-2 px-3 py-2.5 rounded-xl text-xs font-mono animate-scale-in space-y-1.5"
           style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-          <div className="flex gap-2">
-            <span style={{ color: "var(--text-muted)" }}>Time:</span>
-            <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-          </div>
-          <div className="flex gap-2">
-            <span style={{ color: "var(--text-muted)" }}>Type:</span>
-            <span style={{ color }}>{log.type}</span>
-          </div>
-          <div>
-            <span style={{ color: "var(--text-muted)" }}>Full message:</span>
-            <p className="mt-1 whitespace-pre-wrap break-all" style={{ color: "var(--text-primary)" }}>{log.message}</p>
-          </div>
+          {log.message.includes("Live view available: ") ? (
+            <div className="space-y-2">
+              <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", borderRadius: 8 }}>
+                <iframe
+                  src={log.message.split("Live view available: ")[1]}
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none", borderRadius: 8 }}
+                  title="TinyFish Live Browser"
+                />
+              </div>
+              <a href={log.message.split("Live view available: ")[1]} target="_blank" rel="noopener noreferrer"
+                className="text-[10px] underline" style={{ color: "#3b82f6" }}>
+                Open in new tab ↗
+              </a>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <span style={{ color: "var(--text-muted)" }}>Time:</span>
+                <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+              </div>
+              <div className="flex gap-2">
+                <span style={{ color: "var(--text-muted)" }}>Type:</span>
+                <span style={{ color }}>{log.type}</span>
+              </div>
+              <div>
+                <span style={{ color: "var(--text-muted)" }}>Full message:</span>
+                <p className="mt-1 whitespace-pre-wrap break-all" style={{ color: "var(--text-primary)" }}>{log.message}</p>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
