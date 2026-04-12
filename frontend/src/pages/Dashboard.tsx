@@ -3,6 +3,9 @@ import {
   LayoutDashboard, Radar, DollarSign, Briefcase, Star, FileText, Cpu,
   RefreshCw, TrendingUp, BarChart3, Activity,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatCard } from "../components/StatCard";
 import { AIParticles } from "../components/FishAnimation";
 import { fetchDashboardStats } from "../services/api";
@@ -38,7 +41,7 @@ export function Dashboard() {
   const hasData = stats && stats.totalScans > 0;
 
   return (
-    <div className="min-h-screen p-6 space-y-6 page-enter" style={{ maxWidth: 1400, margin: "0 auto", position: "relative" }}>
+    <div className="min-h-screen p-6 space-y-6 page-enter max-w-[1400px] mx-auto relative">
       <AIParticles count={8} />
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -46,17 +49,16 @@ export function Dashboard() {
           <LayoutDashboard size={20} style={{ color: "#3b82f6" }} />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Intelligence Dashboard</h1>
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <h1 className="text-xl font-bold text-foreground">Intelligence Dashboard</h1>
+          <p className="text-xs text-muted-foreground">
             Overview of your competitive intelligence scans
           </p>
         </div>
-        <button onClick={load}
-          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110"
-          style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+        <Button onClick={load} variant="outline" size="icon"
+          className="rounded-xl hover:scale-110 transition-all duration-200"
           title="Refresh">
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        </button>
+          <RefreshCw size={16} className={cn(loading && "animate-spin")} />
+        </Button>
       </div>
 
       {loading && <div className="flex items-center justify-center py-8"><span className="text-sm font-medium" style={{ color: "var(--accent)" }}>Fetching dashboard data...</span></div>}
@@ -82,14 +84,13 @@ export function Dashboard() {
             <DataCard title="Scan History" icon={<BarChart3 size={16} />} color="#3b82f6">
               <div className="space-y-2">
                 {stats.perScan.map((scan) => (
-                  <div key={scan.scanIndex} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                    style={{ backgroundColor: "var(--bg-input)" }}>
+                  <div key={scan.scanIndex} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted">
                     <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
                       style={{ background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", color: "#fff" }}>
                       #{scan.scanIndex}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                      <div className="text-sm font-medium text-foreground">
                         {scan.competitors} competitor{scan.competitors !== 1 ? "s" : ""} analyzed
                       </div>
                       <div className="flex gap-3 mt-1">
@@ -144,19 +145,18 @@ export function Dashboard() {
           </div>
         </>
       ) : !loading ? (
-        <div className="rounded-2xl p-8 text-center animate-fade-in"
-          style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
-          <div style={{ margin: "0 auto 16px", width: "fit-content" }}>
-            <Radar size={48} style={{ color: "var(--accent)", opacity: 0.4 }} />
+        <Card className="rounded-2xl p-8 gap-0 text-center animate-fade-in shadow-md">
+          <div className="mx-auto mb-4 w-fit">
+            <Radar size={48} className="opacity-40" style={{ color: "var(--accent)" }} />
           </div>
-          <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
+          <h2 className="text-base font-semibold mb-2 text-foreground">
             Run your first scan to populate the dashboard
           </h2>
-          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <p className="text-sm text-muted-foreground">
             Go to the Agent tab and enter competitor names to start gathering intelligence.
             Reports will appear here after each scan completes.
           </p>
-        </div>
+        </Card>
       ) : null}
     </div>
   );
@@ -164,15 +164,16 @@ export function Dashboard() {
 
 function DataCard({ title, icon, color, children }: { title: string; icon: React.ReactNode; color: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl p-5 animate-scale-in"
-      style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
-      <div className="flex items-center gap-2 mb-4">
+    <Card className={cn("rounded-2xl p-0 gap-0 animate-scale-in shadow-md")}>
+      <CardHeader className="flex flex-row items-center gap-2 p-5 pb-4">
         <span className="w-7 h-7 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: `${color}15`, color }}>{icon}</span>
-        <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</span>
-      </div>
-      {children}
-    </div>
+        <CardTitle className="text-sm">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-5 pt-0">
+        {children}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -189,10 +190,10 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{label}</span>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <span className="text-xs font-bold" style={{ color }}>{value}</span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--bg-input)" }}>
+      <div className="h-2 rounded-full overflow-hidden bg-muted">
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
     </div>
@@ -202,7 +203,7 @@ function BarRow({ label, value, max, color }: { label: string; value: number; ma
 function CoverageCircle({ label, found, total, color }: { label: string; found: number; total: number; color: string }) {
   const pct = total > 0 ? Math.round((found / total) * 100) : 0;
   return (
-    <div className="flex flex-col items-center gap-2 p-3 rounded-xl" style={{ backgroundColor: "var(--bg-input)" }}>
+    <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted">
       <div className="relative w-14 h-14">
         <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--border)" strokeWidth="3" />
@@ -214,8 +215,8 @@ function CoverageCircle({ label, found, total, color }: { label: string; found: 
           {pct}%
         </span>
       </div>
-      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>{label}</span>
-      <span className="text-[10px]" style={{ color: "var(--text-secondary)" }}>{found}/{total}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-[10px] text-muted-foreground">{found}/{total}</span>
     </div>
   );
 }

@@ -7,7 +7,7 @@ export function buildPlannerPrompt(
 User Request: "${userInput}"
 Filters:
 - Tasks to perform: ${(filters.tasks || ["pricing", "jobs", "reviews", "blog"]).join(", ")}
-- Max competitors: ${filters.maxCompetitors || 5}
+- Max competitors: ${filters.maxCompetitors ?? 5}
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
@@ -28,7 +28,7 @@ CRITICAL RULES:
 - tasks must be from: pricing, jobs, reviews, blog, social, features
 - Only include tasks from the filter list above
 - maxDepth: how many pages deep to go per task (1-5)
-- Return at most ${filters.maxCompetitors || 5} competitors`;
+- Return at most ${filters.maxCompetitors ?? 5} competitors`;
 }
 
 export function buildSummaryPrompt(company: string, rawData: string): string {

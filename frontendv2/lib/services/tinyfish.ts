@@ -1,5 +1,3 @@
-"use server"
-
 // TinyFish Browser Automation Service
 // Integrates with TinyFish AI agent for web scraping and form automation
 

@@ -3,6 +3,7 @@ import {
   Settings, DollarSign, Briefcase, Star, FileText, Cpu, Share2,
   Eye, Lock, Users, Check, ChevronDown, Brain, Key, Server,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface LLMConfig {
   provider: string;
@@ -98,18 +99,14 @@ function Section({ id, icon, title, color, defaultOpen, scrollToSection, childre
   }, [scrollToSection, id]);
 
   return (
-    <div ref={ref} className="rounded-2xl transition-all duration-300"
-      style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-sm)", overflow: open ? "visible" : "hidden" }}>
+    <div ref={ref} className="rounded-2xl transition-all duration-300 bg-card border border-border shadow-sm"
+      style={{ overflow: open ? "visible" : "hidden" }}>
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-4 py-3 transition-colors duration-200"
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+        className="w-full flex items-center gap-2 px-4 py-3 transition-colors duration-200 hover:bg-muted/50">
         <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${color}18`, color }}>{icon}</span>
-        <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wider"
-          style={{ color: "var(--text-muted)" }}>{title}</span>
-        <ChevronDown size={14} style={{
-          color: "var(--text-muted)", flexShrink: 0,
+        <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</span>
+        <ChevronDown size={14} className="shrink-0 text-muted-foreground" style={{
           transform: open ? "rotate(180deg)" : "rotate(0)",
           transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
         }} />
@@ -142,25 +139,22 @@ function Dropdown({ value, onChange, options, accent }: {
   return (
     <div className="relative" ref={ref}>
       <button type="button" onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200"
+        className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 bg-muted text-foreground"
         style={{
-          backgroundColor: "var(--bg-input)", border: `1.5px solid ${open ? accent : "var(--border)"}`,
-          color: "var(--text-primary)", boxShadow: open ? `0 0 0 3px ${accent}20` : "none",
+          border: `1.5px solid ${open ? accent : "var(--border)"}`,
+          boxShadow: open ? `0 0 0 3px ${accent}20` : "none",
         }}>
         <span className="flex-1 text-left font-medium text-xs">{selected?.label || value}</span>
-        <ChevronDown size={14} style={{ color: "var(--text-muted)", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.3s" }} />
+        <ChevronDown size={14} className="text-muted-foreground" style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.3s" }} />
       </button>
       {open && (
-        <div className="absolute z-50 w-full mt-1.5 rounded-xl overflow-hidden animate-scale-in py-1"
-          style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-lg)" }}>
+        <div className="absolute z-50 w-full mt-1.5 rounded-xl overflow-hidden animate-scale-in py-1 bg-card border border-border shadow-lg">
           {options.map((opt) => {
             const isSel = opt.value === value;
             return (
               <button key={opt.value} onClick={() => { onChange(opt.value); setOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs transition-all duration-150"
-                style={{ backgroundColor: isSel ? `${accent}12` : "transparent", color: isSel ? accent : "var(--text-primary)" }}
-                onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.backgroundColor = "var(--bg-hover)"; }}
-                onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.backgroundColor = "transparent"; }}>
+                className={cn("w-full flex items-center gap-2 px-3 py-2 text-xs transition-all duration-150", !isSel && "hover:bg-muted/50")}
+                style={{ backgroundColor: isSel ? `${accent}12` : "transparent", color: isSel ? accent : "var(--text-primary)" }}>
                 {opt.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: opt.color }} />}
                 <span className="flex-1 text-left">{opt.label}</span>
                 {isSel && <Check size={12} style={{ color: accent }} />}
@@ -200,7 +194,7 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
           style={{ background: "linear-gradient(135deg, #a855f7, #6366f1)", color: "#fff" }}>
           <Settings size={15} />
         </span>
-        <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Configuration</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Configuration</h2>
       </div>
 
       {/* LLM + TinyFish — shown in "all" and "keys-only" modes */}
@@ -208,17 +202,17 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
       <Section id="llm" icon={<Brain size={14} />} title="LLM Settings" color={currentProvider.color} scrollToSection={scrollToSection}>
         <div className="space-y-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Provider</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">Provider</div>
             <Dropdown value={llm.provider} onChange={(v) => updateLLM("provider", v)}
               options={PROVIDERS.map((p) => ({ value: p.id, label: p.label, color: p.color }))} accent={currentProvider.color} />
           </div>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Model</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground">Model</div>
             <Dropdown value={llm.model} onChange={(v) => updateLLM("model", v)}
               options={currentProvider.models.map((m) => ({ value: m.id, label: m.label }))} accent={currentProvider.color} />
           </div>
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1 text-muted-foreground">
               <Key size={10} /> API Key
             </div>
             <div className="relative">
@@ -226,12 +220,10 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
                 onChange={(e) => updateLLM("apiKey", e.target.value)}
                 onFocus={() => setShowKey(true)} onBlur={() => setShowKey(false)}
                 placeholder={`Enter ${currentProvider.label} API key...`}
-                className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono"
-                style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }} />
+                className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono bg-muted border border-border text-foreground" />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                 {llm.apiKey && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />}
-                <button type="button" onClick={() => setShowKey(!showKey)} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-                  style={{ backgroundColor: "var(--bg-hover)", color: "var(--text-muted)" }}>{showKey ? "Hide" : "Show"}</button>
+                <button type="button" onClick={() => setShowKey(!showKey)} className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-muted/50 text-muted-foreground">{showKey ? "Hide" : "Show"}</button>
               </div>
             </div>
           </div>
@@ -245,12 +237,10 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
             onChange={(e) => onChange({ ...filters, tinyfishApiKey: e.target.value })}
             onFocus={() => setShowTfKey(true)} onBlur={() => setShowTfKey(false)}
             placeholder="sk-tinyfish-..."
-            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono"
-            style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }} />
+            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none pr-16 font-mono bg-muted border border-border text-foreground" />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {tfKey && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#22c55e" }} />}
-            <button type="button" onClick={() => setShowTfKey(!showTfKey)} className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-              style={{ backgroundColor: "var(--bg-hover)", color: "var(--text-muted)" }}>{showTfKey ? "Hide" : "Show"}</button>
+            <button type="button" onClick={() => setShowTfKey(!showTfKey)} className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-muted/50 text-muted-foreground">{showTfKey ? "Hide" : "Show"}</button>
           </div>
         </div>
       </Section>
@@ -266,7 +256,7 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
               className="w-full h-2 rounded-full appearance-none cursor-pointer"
               style={{ background: `linear-gradient(to right, ${lc} 0%, ${lc} ${pct}%, var(--bg-hover) ${pct}%, var(--bg-hover) 100%)` }} />
             <div className="flex justify-between mt-1.5 px-0.5">
-              {[1, 3, 5, 10].map((n) => (<span key={n} className="text-[10px]" style={{ color: "var(--text-muted)" }}>{n}</span>))}
+              {[1, 3, 5, 10].map((n) => (<span key={n} className="text-[10px] text-muted-foreground">{n}</span>))}
             </div>
           </div>
           <div className="w-14 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
@@ -283,14 +273,12 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
             const active = filters.tasks.includes(task.id);
             return (
               <button key={task.id} onClick={() => toggleTask(task.id)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200"
+                className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200", !active && "hover:bg-muted/50")}
                 style={{
                   backgroundColor: active ? `${task.color}12` : "transparent",
                   border: `1.5px solid ${active ? `${task.color}40` : "transparent"}`,
                   color: active ? task.color : "var(--text-secondary)",
-                }}
-                onMouseEnter={(e) => { if (!active) e.currentTarget.style.backgroundColor = "var(--bg-hover)"; }}
-                onMouseLeave={(e) => { if (!active) e.currentTarget.style.backgroundColor = "transparent"; }}>
+                }}>
                 <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${task.color}15`, color: task.color }}>{task.icon}</span>
                 <span className="flex-1 text-left font-medium">{task.label}</span>
                 {active && <span className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: task.color, color: "#fff" }}><Check size={12} /></span>}
@@ -303,7 +291,7 @@ export function SettingsPanel({ filters, onChange, scrollToSection, mode = "all"
       {/* Execution Mode */}
       <Section id="mode" icon={filters.executionMode === "visible" ? <Eye size={14} /> : <Lock size={14} />}
         title="Execution Mode" color="#6366f1" scrollToSection={scrollToSection}>
-        <div className="flex gap-2 p-1.5 rounded-2xl" style={{ backgroundColor: "var(--bg-input)" }}>
+        <div className="flex gap-2 p-1.5 rounded-2xl bg-muted">
           {(["visible", "headless"] as const).map((mode) => {
             const active = filters.executionMode === mode;
             const grad = mode === "visible" ? "linear-gradient(135deg, #f43f5e, #ec4899)" : "linear-gradient(135deg, #6366f1, #8b5cf6)";

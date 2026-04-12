@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
 import { runTinyFishAgent, cancelTinyFishRun } from "../services/tinyfish.service";
 import { callGroq, setLLMConfig } from "../llm/groq.client";
+import { appendToStore } from "../services/store";
 
 const strategyStore = new Map<string, { logs: string[]; done: boolean; result: any; abortController?: AbortController; tinyFishRunId?: string }>();
 
@@ -45,6 +46,15 @@ export async function runStrategy(req: Request, res: Response) {
   }
 
   run.done = true;
+  // Persist to history
+  appendToStore("strategyHistory", {
+    id: runId,
+    tool,
+    input,
+    timestamp: new Date().toISOString(),
+    status: run.result?.error ? "error" : "complete",
+    logsCount: run.logs.length,
+  });
 }
 
 // ── Market Breakdown: Scrape real market data ──

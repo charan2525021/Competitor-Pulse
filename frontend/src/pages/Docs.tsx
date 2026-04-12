@@ -5,6 +5,9 @@ import {
   Target, TrendingUp, Crosshair, Megaphone, MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface SectionProps {
   icon: React.ReactNode;
@@ -17,19 +20,18 @@ interface SectionProps {
 function DocSection({ icon, title, color, children, defaultOpen = false }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-2xl overflow-hidden transition-all duration-300"
-      style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
+    <Card className="rounded-2xl overflow-hidden transition-all duration-300 shadow-sm">
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 px-5 py-4 transition-colors duration-200"
         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
         <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${color}12`, color }}>{icon}</span>
-        <span className="flex-1 text-left text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{title}</span>
-        <ChevronDown size={16} style={{ color: "var(--text-muted)", transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.3s" }} />
+        <span className="flex-1 text-left text-sm font-semibold text-foreground">{title}</span>
+        <ChevronDown size={16} className="text-muted-foreground" style={{ transform: open ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.3s" }} />
       </button>
-      {open && <div className="px-5 pb-5 pt-1 animate-fade-in">{children}</div>}
-    </div>
+      {open && <CardContent className="px-5 pb-5 pt-1 animate-fade-in">{children}</CardContent>}
+    </Card>
   );
 }
 
@@ -38,7 +40,7 @@ function Step({ num, children }: { num: number; children: React.ReactNode }) {
     <div className="flex gap-3 items-start">
       <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
         style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}>{num}</span>
-      <div className="text-sm" style={{ color: "var(--text-secondary)" }}>{children}</div>
+      <div className="text-sm text-muted-foreground">{children}</div>
     </div>
   );
 }
@@ -47,15 +49,15 @@ function Tip({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex gap-2 items-start mt-3 px-3 py-2.5 rounded-xl"
       style={{ backgroundColor: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}>
-      <Zap size={13} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 2 }} />
-      <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{children}</span>
+      <Zap size={13} className="text-primary shrink-0 mt-0.5" />
+      <span className="text-xs text-muted-foreground">{children}</span>
     </div>
   );
 }
 
 export function Docs() {
   return (
-    <div className="min-h-screen p-6 space-y-4 page-enter" style={{ maxWidth: 800, margin: "0 auto" }}>
+    <div className="min-h-screen p-6 space-y-4 page-enter max-w-[800px] mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -63,34 +65,34 @@ export function Docs() {
           <BookOpen size={20} />
         </div>
         <div>
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Documentation</h1>
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Learn how to use CompetitorPulse effectively</p>
+          <h1 className="text-xl font-bold text-foreground">Documentation</h1>
+          <p className="text-xs text-muted-foreground">Learn how to use CompetitorPulse effectively</p>
         </div>
       </div>
 
       {/* Getting Started */}
       <DocSection icon={<Radar size={16} />} title="Getting Started" color="#6366f1" defaultOpen={true}>
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm text-muted-foreground">
             CompetitorPulse is an autonomous web agent that gathers competitive intelligence by navigating real websites.
             It uses TinyFish's browser automation to visit competitor sites and extract pricing, job postings, reviews, blog posts, and more.
           </p>
           <div className="space-y-3">
             <Step num={1}>
-              <span className="font-medium" style={{ color: "var(--text-primary)" }}>Set up your API keys</span>
+              <span className="font-medium text-foreground">Set up your API keys</span>
               <br />Open the settings panel (right sidebar) and enter your TinyFish API key. This is required for the web agent to work.
               Optionally, add an LLM key (Groq, OpenAI, etc.) to enable natural language queries.
             </Step>
             <Step num={2}>
-              <span className="font-medium" style={{ color: "var(--text-primary)" }}>Choose what to analyze</span>
+              <span className="font-medium text-foreground">Choose what to analyze</span>
               <br />Select which intelligence tasks you want (pricing, jobs, reviews, blog, features, social) in the settings panel.
             </Step>
             <Step num={3}>
-              <span className="font-medium" style={{ color: "var(--text-primary)" }}>Enter competitors</span>
+              <span className="font-medium text-foreground">Enter competitors</span>
               <br />Type competitor names in the chat (e.g., "Analyze Slack and Notion") or enter URLs directly if you only have a TinyFish key.
             </Step>
             <Step num={4}>
-              <span className="font-medium" style={{ color: "var(--text-primary)" }}>Watch the agent work</span>
+              <span className="font-medium text-foreground">Watch the agent work</span>
               <br />The live log shows every step the agent takes in real-time. When done, switch to the Intel Reports tab to see structured results.
             </Step>
           </div>
@@ -101,22 +103,22 @@ export function Docs() {
       {/* API Keys */}
       <DocSection icon={<Key size={16} />} title="API Keys Setup" color="#ef4444">
         <div className="space-y-3">
-          <div className="rounded-xl p-3" style={{ backgroundColor: "var(--bg-input)" }}>
+          <div className="rounded-xl p-3 bg-muted">
             <div className="flex items-center gap-2 mb-1">
               <Globe size={13} style={{ color: "#0ea5e9" }} />
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>TinyFish API Key (Required)</span>
+              <span className="text-sm font-medium text-foreground">TinyFish API Key (Required)</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              Powers the web automation agent. Get your key at <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>tinyfish.ai</a>.
+            <p className="text-xs text-muted-foreground">
+              Powers the web automation agent. Get your key at <a href="https://tinyfish.ai" target="_blank" rel="noopener noreferrer" className="text-primary">tinyfish.ai</a>.
               Without this key, the agent cannot navigate websites.
             </p>
           </div>
-          <div className="rounded-xl p-3" style={{ backgroundColor: "var(--bg-input)" }}>
+          <div className="rounded-xl p-3 bg-muted">
             <div className="flex items-center gap-2 mb-1">
               <Brain size={13} style={{ color: "#f97316" }} />
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>LLM API Key (Optional but recommended)</span>
+              <span className="text-sm font-medium text-foreground">LLM API Key (Optional but recommended)</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-xs text-muted-foreground">
               Enables natural language queries and smart data extraction. Supports Groq (free tier available), OpenAI, Anthropic, Google, and local Ollama models.
               Without an LLM key, you'll need to enter competitor URLs directly.
             </p>
@@ -128,22 +130,22 @@ export function Docs() {
       {/* Two Input Modes */}
       <DocSection icon={<Search size={16} />} title="Two Ways to Use the Agent" color="#3b82f6">
         <div className="space-y-3">
-          <div className="rounded-xl p-3" style={{ backgroundColor: "var(--bg-input)" }}>
+          <div className="rounded-xl p-3 bg-muted">
             <div className="flex items-center gap-2 mb-1">
               <Zap size={13} style={{ color: "#8b5cf6" }} />
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Smart Mode (TinyFish + LLM keys)</span>
+              <span className="text-sm font-medium text-foreground">Smart Mode (TinyFish + LLM keys)</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-xs text-muted-foreground">
               Type natural language like "Compare pricing of Slack and Notion" or "What positions is Stripe hiring for".
               The LLM figures out the competitor URLs and plans the analysis automatically.
             </p>
           </div>
-          <div className="rounded-xl p-3" style={{ backgroundColor: "var(--bg-input)" }}>
+          <div className="rounded-xl p-3 bg-muted">
             <div className="flex items-center gap-2 mb-1">
               <Globe size={13} style={{ color: "#0ea5e9" }} />
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>URL Mode (TinyFish key only)</span>
+              <span className="text-sm font-medium text-foreground">URL Mode (TinyFish key only)</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-xs text-muted-foreground">
               Enter competitor website URLs directly (e.g., https://slack.com, https://notion.so).
               The agent visits each URL and runs the selected intelligence tasks without needing an LLM.
             </p>
@@ -162,11 +164,11 @@ export function Docs() {
             { icon: <Cpu size={13} />, color: "#06b6d4", name: "Features", desc: "Visits the features or product page and extracts key capabilities and feature categories listed on the site." },
             { icon: <Share2 size={13} />, color: "#ec4899", name: "Social Media", desc: "Finds social media links (Twitter, LinkedIn, YouTube, etc.) in the website footer and extracts profile URLs and follower counts." },
           ].map((t) => (
-            <div key={t.name} className="flex gap-3 items-start rounded-xl p-3" style={{ backgroundColor: "var(--bg-input)" }}>
+            <div key={t.name} className="flex gap-3 items-start rounded-xl p-3 bg-muted">
               <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${t.color}12`, color: t.color }}>{t.icon}</span>
               <div>
-                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{t.name}</span>
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{t.desc}</p>
+                <span className="text-sm font-medium text-foreground">{t.name}</span>
+                <p className="text-xs mt-0.5 text-muted-foreground">{t.desc}</p>
               </div>
             </div>
           ))}
@@ -184,11 +186,11 @@ export function Docs() {
             { icon: <Database size={13} />, color: "#06b6d4", name: "Intel Data", desc: "All gathered intelligence stored permanently. Browse, search, and delete records. Data persists across sessions." },
             { icon: <BarChart3 size={13} />, color: "#3b82f6", name: "Dashboard", desc: "Visual overview of all your scans — total competitors analyzed, pricing pages found, job postings, reviews, and more." },
           ].map((s) => (
-            <div key={s.name} className="flex gap-3 items-start rounded-xl p-3" style={{ backgroundColor: "var(--bg-input)" }}>
+            <div key={s.name} className="flex gap-3 items-start rounded-xl p-3 bg-muted">
               <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${s.color}12`, color: s.color }}>{s.icon}</span>
               <div>
-                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{s.name}</span>
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{s.desc}</p>
+                <span className="text-sm font-medium text-foreground">{s.name}</span>
+                <p className="text-xs mt-0.5 text-muted-foreground">{s.desc}</p>
               </div>
             </div>
           ))}
@@ -198,7 +200,7 @@ export function Docs() {
       {/* Strategy Tools */}
       <DocSection icon={<Target size={16} />} title="Strategy Tools" color="#ef4444">
         <div className="space-y-3">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm text-muted-foreground">
             AI-powered market analysis tools that combine real web research with LLM reasoning. Each tool takes a market or niche description and produces a detailed strategic analysis.
           </p>
           <div className="space-y-2">
@@ -219,23 +221,25 @@ export function Docs() {
                 details: ["Top 5 competitor identification and profiling", "Strength/weakness matrix for each competitor", "Pricing gap analysis", "Feature comparison and missing capabilities", "Customer sentiment analysis from reviews", "Actionable domination strategy"],
               },
             ].map((t) => (
-              <div key={t.name} className="rounded-xl p-4" style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
-                <div className="flex gap-3 items-start">
-                  <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${t.color}12`, color: t.color }}>{t.icon}</span>
-                  <div className="flex-1">
-                    <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{t.name}</span>
-                    <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{t.desc}</p>
+              <Card key={t.name} className="rounded-xl bg-muted border-border">
+                <CardContent className="p-4">
+                  <div className="flex gap-3 items-start">
+                    <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: `${t.color}12`, color: t.color }}>{t.icon}</span>
+                    <div className="flex-1">
+                      <span className="text-sm font-semibold text-foreground">{t.name}</span>
+                      <p className="text-xs mt-1 text-muted-foreground">{t.desc}</p>
                     <div className="mt-2 grid grid-cols-2 gap-1">
                       {t.details.map((d) => (
                         <div key={d} className="flex items-center gap-1.5">
-                          <ArrowRight size={9} style={{ color: t.color, flexShrink: 0 }} />
-                          <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{d}</span>
+                          <ArrowRight size={9} className="shrink-0" style={{ color: t.color }} />
+                          <span className="text-[11px] text-muted-foreground">{d}</span>
                         </div>
                       ))}
                     </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
           <Tip>Strategy tools require both TinyFish and LLM API keys. The agent searches real websites for data, then the LLM synthesizes the findings into a strategic report.</Tip>
@@ -245,7 +249,7 @@ export function Docs() {
       {/* Settings */}
       <DocSection icon={<Settings size={16} />} title="Settings Panel" color="#f59e0b">
         <div className="space-y-3">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm text-muted-foreground">
             The right sidebar on the Agent page contains all configuration options. Click any icon when the sidebar is collapsed to jump directly to that section.
           </p>
           <div className="space-y-2">
@@ -257,10 +261,10 @@ export function Docs() {
               { name: "Execution Mode", desc: "Visible mode shows the browser (useful for demos). Headless mode runs in the background (faster)." },
             ].map((s) => (
               <div key={s.name} className="flex items-start gap-2">
-                <ArrowRight size={12} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 4 }} />
+                <ArrowRight size={12} className="text-primary shrink-0 mt-1" />
                 <div>
-                  <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{s.name}</span>
-                  <span className="text-xs ml-1" style={{ color: "var(--text-secondary)" }}>— {s.desc}</span>
+                  <span className="text-xs font-medium text-foreground">{s.name}</span>
+                  <span className="text-xs ml-1 text-muted-foreground">— {s.desc}</span>
                 </div>
               </div>
             ))}
@@ -288,9 +292,8 @@ export function Docs() {
                 "Get social media links for Vercel and Netlify",
                 "Find blog posts and product updates from Datadog",
               ].map((p) => (
-                <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
-                  <Zap size={11} style={{ color: "#6366f1", flexShrink: 0 }} />
+                <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm bg-muted text-foreground">
+                  <Zap size={11} className="shrink-0" style={{ color: "#6366f1" }} />
                   <span className="font-mono text-xs">{p}</span>
                 </div>
               ))}
@@ -315,9 +318,8 @@ export function Docs() {
                 { tool: "Weakness Map", prompt: "CRM platforms — Salesforce, HubSpot, Pipedrive" },
                 { tool: "Weakness Map", prompt: "Design tools — Figma, Canva, Adobe XD" },
               ].map((p) => (
-                <div key={p.prompt} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444" }}>{p.tool}</span>
+                <div key={p.prompt} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm bg-muted text-foreground">
+                  <Badge variant="secondary" className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 border-0" style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444" }}>{p.tool}</Badge>
                   <span className="font-mono text-xs">{p.prompt}</span>
                 </div>
               ))}
@@ -339,9 +341,8 @@ export function Docs() {
                 "DevRel engineers at developer tool companies",
                 "Founders of AI startups in the Bay Area",
               ].map((p) => (
-                <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
-                  <Users size={11} style={{ color: "#f59e0b", flexShrink: 0 }} />
+                <div key={p} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm bg-muted text-foreground">
+                  <Users size={11} className="shrink-0" style={{ color: "#f59e0b" }} />
                   <span className="font-mono text-xs">{p}</span>
                 </div>
               ))}
@@ -362,9 +363,8 @@ export function Docs() {
                 { type: "Free Trial", url: "https://hubspot.com/get-started" },
                 { type: "Partnership", url: "https://figma.com/partners" },
               ].map((p) => (
-                <div key={p.url} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                  style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)" }}>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>{p.type}</span>
+                <div key={p.url} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm bg-muted text-foreground">
+                  <Badge variant="secondary" className="text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 border-0" style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>{p.type}</Badge>
                   <span className="font-mono text-xs">{p.url}</span>
                 </div>
               ))}

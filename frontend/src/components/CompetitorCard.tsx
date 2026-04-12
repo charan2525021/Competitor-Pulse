@@ -3,6 +3,7 @@ import {
   Globe, DollarSign, Briefcase, Star, FileText, Cpu,
   ChevronDown, ExternalLink, MapPin, TrendingUp, Hash, Share2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CompetitorCardProps {
   report: any;
@@ -31,41 +32,32 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
 
   return (
     <div
-      className="rounded-2xl overflow-hidden animate-scale-in"
-      style={{
-        animationDelay: `${index * 120}ms`,
-        backgroundColor: "var(--bg-card)",
-        border: "1.5px solid var(--border)",
-        boxShadow: "var(--shadow-md)",
-      }}
+      className="rounded-2xl overflow-hidden animate-scale-in bg-card border border-border shadow-md"
+      style={{ animationDelay: `${index * 120}ms` }}
     >
       {/* Gradient accent bar */}
       <div style={{ height: 3, background: gradient }} />
 
       {/* Header */}
       <div
-        className="flex items-center gap-3 px-5 py-4 cursor-pointer transition-colors duration-200"
+        className="flex items-center gap-3 px-5 py-4 cursor-pointer transition-colors duration-200 hover:bg-muted/50"
         onClick={() => setExpanded(!expanded)}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
       >
         <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg"
           style={{ background: gradient, color: "#fff" }}>
           <Globe size={20} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-bold truncate" style={{ color: "var(--text-primary)" }}>
+          <h3 className="text-base font-bold truncate text-foreground">
             {report.company}
           </h3>
           <div className="flex items-center gap-3 mt-0.5">
             <a href={report.url} target="_blank" rel="noopener noreferrer"
-              className="text-xs flex items-center gap-1 hover:underline truncate"
-              style={{ color: "var(--accent)" }}
+              className="text-xs flex items-center gap-1 hover:underline truncate text-primary"
               onClick={(e) => e.stopPropagation()}>
               {report.url} <ExternalLink size={10} />
             </a>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0"
-              style={{ backgroundColor: "var(--bg-input)", color: "var(--text-muted)" }}>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 bg-muted text-muted-foreground">
               {totalDataPoints} data points
             </span>
           </div>
@@ -79,11 +71,10 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
           {featureCount > 0 && <Badge icon={<Cpu size={10} />} text={`${featureCount}`} color="#06b6d4" />}
           {socialCount > 0 && <Badge icon={<Share2 size={10} />} text={`${socialCount}`} color="#ec4899" />}
         </div>
-        <ChevronDown size={16} style={{
-          color: "var(--text-muted)",
-          transform: expanded ? "rotate(180deg)" : "rotate(0)",
-          transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
-        }} />
+        <ChevronDown size={16}
+          className={cn("text-muted-foreground transition-transform duration-300", expanded && "rotate-180")}
+          style={{ transitionTimingFunction: "cubic-bezier(0.34,1.56,0.64,1)" }}
+        />
       </div>
 
       {/* Expanded content */}
@@ -94,10 +85,9 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
             <Section icon={<DollarSign size={14} />} title="Pricing Plans" color="#22c55e" count={planCount}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {report.pricing.plans.map((plan: any, i: number) => (
-                  <div key={i} className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02]"
-                    style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
+                  <div key={i} className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.02] bg-muted border border-border">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{plan.name}</div>
+                      <div className="text-sm font-bold text-foreground">{plan.name}</div>
                       {plan.popular && (
                         <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase"
                           style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)", color: "#fff" }}>
@@ -106,15 +96,15 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                       )}
                     </div>
                     <div className="text-xl font-extrabold" style={{ color: "#22c55e" }}>{plan.price}</div>
-                    {plan.period && <div className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>{plan.period}</div>}
+                    {plan.period && <div className="text-[11px] mb-2 text-muted-foreground">{plan.period}</div>}
                     {plan.features?.slice(0, 4).map((f: string, j: number) => (
-                      <div key={j} className="text-xs mt-1 flex items-start gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                      <div key={j} className="text-xs mt-1 flex items-start gap-1.5 text-muted-foreground">
                         <span style={{ color: "#22c55e", marginTop: 2 }}>✓</span>
                         <span className="line-clamp-1">{f}</span>
                       </div>
                     ))}
                     {plan.features?.length > 4 && (
-                      <div className="text-[10px] mt-1.5" style={{ color: "var(--text-muted)" }}>
+                      <div className="text-[10px] mt-1.5 text-muted-foreground">
                         +{plan.features.length - 4} more features
                       </div>
                     )}
@@ -129,26 +119,22 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
             <Section icon={<Briefcase size={14} />} title="Open Positions" color="#3b82f6" count={jobCount}>
               <div className="space-y-1.5">
                 {report.jobs.slice(0, 8).map((job: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 hover:scale-[1.01]"
-                    style={{ backgroundColor: "var(--bg-input)", border: "1px solid transparent" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(59,130,246,0.3)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
-                  >
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 hover:scale-[1.01] bg-muted border border-transparent hover:border-blue-500/30">
                     <Hash size={12} style={{ color: "#3b82f6", opacity: 0.5 }} />
-                    <span className="flex-1 font-medium truncate" style={{ color: "var(--text-primary)" }}>{job.title}</span>
+                    <span className="flex-1 font-medium truncate text-foreground">{job.title}</span>
                     {job.department && (
                       <span className="text-[11px] px-2 py-0.5 rounded-lg shrink-0 font-medium"
                         style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>{job.department}</span>
                     )}
                     {job.location && (
-                      <span className="text-[11px] flex items-center gap-1 shrink-0" style={{ color: "var(--text-muted)" }}>
+                      <span className="text-[11px] flex items-center gap-1 shrink-0 text-muted-foreground">
                         <MapPin size={10} /> {job.location}
                       </span>
                     )}
                   </div>
                 ))}
                 {jobCount > 8 && (
-                  <div className="text-xs text-center py-2 rounded-lg" style={{ color: "var(--text-muted)", backgroundColor: "var(--bg-input)" }}>
+                  <div className="text-xs text-center py-2 rounded-lg text-muted-foreground bg-muted">
                     +{jobCount - 8} more positions
                   </div>
                 )}
@@ -159,7 +145,7 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
           {/* Reviews */}
           {report.reviews && (
             <Section icon={<Star size={14} />} title={`Reviews — ${report.reviews.platform || "G2"}`} color="#f59e0b">
-              <div className="flex items-center gap-4 mb-3 p-3 rounded-xl" style={{ backgroundColor: "var(--bg-input)" }}>
+              <div className="flex items-center gap-4 mb-3 p-3 rounded-xl bg-muted">
                 {report.reviews.rating && (
                   <div className="flex items-center gap-2">
                     <span className="text-3xl font-extrabold" style={{ color: "#f59e0b" }}>{report.reviews.rating}</span>
@@ -171,7 +157,7 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                         ))}
                       </div>
                       {report.reviews.totalReviews && (
-                        <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        <span className="text-[10px] mt-0.5 text-muted-foreground">
                           {report.reviews.totalReviews} reviews
                         </span>
                       )}
@@ -180,8 +166,7 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                 )}
               </div>
               {report.reviews.recentReviews?.map((review: any, i: number) => (
-                <div key={i} className="px-3 py-2.5 rounded-xl mb-2 text-sm transition-all duration-200 hover:scale-[1.01]"
-                  style={{ backgroundColor: "var(--bg-input)" }}>
+                <div key={i} className="px-3 py-2.5 rounded-xl mb-2 text-sm transition-all duration-200 hover:scale-[1.01] bg-muted">
                   <div className="flex items-center gap-2 mb-1">
                     {review.rating && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
@@ -189,11 +174,11 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                         ★ {review.rating}/5
                       </span>
                     )}
-                    <span className="font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                    <span className="font-semibold truncate text-foreground">
                       {review.title || "Review"}
                     </span>
                   </div>
-                  <p className="text-xs line-clamp-2" style={{ color: "var(--text-secondary)" }}>{review.summary}</p>
+                  <p className="text-xs line-clamp-2 text-muted-foreground">{review.summary}</p>
                 </div>
               ))}
             </Section>
@@ -204,13 +189,12 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
             <Section icon={<FileText size={14} />} title="Recent Posts" color="#8b5cf6" count={blogCount}>
               <div className="space-y-1.5">
                 {report.blog.slice(0, 5).map((post: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 hover:scale-[1.01]"
-                    style={{ backgroundColor: "var(--bg-input)" }}>
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 hover:scale-[1.01] bg-muted">
                     <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "#8b5cf6" }} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{post.title}</div>
+                      <div className="font-medium truncate text-foreground">{post.title}</div>
                       {post.summary && (
-                        <div className="text-xs truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>{post.summary}</div>
+                        <div className="text-xs truncate mt-0.5 text-muted-foreground">{post.summary}</div>
                       )}
                     </div>
                     {post.date && (
@@ -219,7 +203,7 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                     )}
                     {post.url && (
                       <a href={post.url} target="_blank" rel="noopener noreferrer"
-                        className="shrink-0 transition-transform duration-200 hover:scale-125" style={{ color: "var(--accent)" }}
+                        className="shrink-0 transition-transform duration-200 hover:scale-125 text-primary"
                         onClick={(e) => e.stopPropagation()}>
                         <ExternalLink size={12} />
                       </a>
@@ -250,10 +234,7 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {report.social.profiles.map((profile: any, i: number) => (
                   <a key={i} href={profile.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] no-underline"
-                    style={{ backgroundColor: "var(--bg-input)", border: "1px solid transparent" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(236,72,153,0.3)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] no-underline bg-muted border border-transparent hover:border-pink-500/30"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -261,11 +242,11 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                       <Share2 size={13} />
                     </span>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                      <div className="font-medium truncate text-foreground">
                         {profile.platform}
                       </div>
                       {(profile.handle || profile.followers || profile.subscribers) && (
-                        <div className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
+                        <div className="text-[11px] truncate text-muted-foreground">
                           {profile.handle ? `${profile.handle}` : ""}
                           {profile.handle && (profile.followers || profile.subscribers) ? " · " : ""}
                           {profile.followers ? `${profile.followers} followers` : ""}
@@ -273,7 +254,7 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
                         </div>
                       )}
                     </div>
-                    <ExternalLink size={12} style={{ color: "var(--accent)", opacity: 0.6 }} />
+                    <ExternalLink size={12} className="text-primary opacity-60" />
                   </a>
                 ))}
               </div>
@@ -282,10 +263,10 @@ export function CompetitorCard({ report, index }: CompetitorCardProps) {
 
           {/* Empty state */}
           {!report.pricing && !report.jobs?.length && !report.reviews && !report.blog?.length && !report.features?.length && !report.social?.profiles?.length && (
-            <div className="text-center py-8 rounded-xl" style={{ backgroundColor: "var(--bg-input)", color: "var(--text-muted)" }}>
+            <div className="text-center py-8 rounded-xl bg-muted text-muted-foreground">
               <TrendingUp size={28} style={{ opacity: 0.3, margin: "0 auto 8px" }} />
               <p className="text-sm font-medium">No data gathered yet</p>
-              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>The agent may still be collecting intel for this competitor</p>
+              <p className="text-xs mt-1 text-muted-foreground">The agent may still be collecting intel for this competitor</p>
             </div>
           )}
         </div>
@@ -302,14 +283,14 @@ function Section({ icon, title, color, count, children }: {
       <div className="flex items-center gap-2 mb-3">
         <span className="w-7 h-7 rounded-lg flex items-center justify-center shadow-sm"
           style={{ backgroundColor: `${color}15`, color }}>{icon}</span>
-        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {title}
         </span>
         {count !== undefined && count > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
             style={{ backgroundColor: `${color}15`, color }}>{count}</span>
         )}
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
+        <div className="flex-1 h-px bg-border" />
       </div>
       {children}
     </div>

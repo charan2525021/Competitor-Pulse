@@ -1,18 +1,13 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
-  const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const token = searchParams.get('token')
 
-  if (code) {
-    const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
-    }
+  if (token) {
+    // Redirect to home with token — the auth context will pick it up
+    return NextResponse.redirect(`${origin}?token=${token}`)
   }
 
-  return NextResponse.redirect(`${origin}/auth/error`)
+  return NextResponse.redirect(`${origin}?verified=error&reason=no-token`)
 }

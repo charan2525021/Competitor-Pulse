@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { loadStore, saveStore, removeFromStore, loadConfig, saveConfig } from "../services/store";
+import { loadStore, saveStore, removeFromStore, loadConfig, saveConfig, appendToStore } from "../services/store";
 
 // ── Config (LLM settings, TinyFish key, filters) ──
 
@@ -19,7 +19,7 @@ export function postConfig(req: Request, res: Response) {
 
 export function getData(req: Request, res: Response) {
   const collection = req.params.collection as string;
-  const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles"];
+  const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles", "agentHistory", "strategyHistory", "formHistory", "leadgenHistory"];
   if (!allowed.includes(collection)) {
     res.status(400).json({ success: false, error: "Invalid collection" });
     return;
@@ -30,7 +30,7 @@ export function getData(req: Request, res: Response) {
 
 export function saveData(req: Request, res: Response) {
   const collection = req.params.collection as string;
-  const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles"];
+  const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles", "agentHistory", "strategyHistory", "formHistory", "leadgenHistory"];
   if (!allowed.includes(collection)) {
     res.status(400).json({ success: false, error: "Invalid collection" });
     return;
@@ -48,7 +48,7 @@ export function deleteItem(req: Request, res: Response) {
   }
   const collection = req.params.collection as string;
   const id = req.params.id as string;
-  const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles"];
+  const allowed = ["history", "intel", "leads", "leadHistory", "fillHistory", "formProfiles", "agentHistory", "strategyHistory", "formHistory", "leadgenHistory"];
   if (!allowed.includes(collection)) {
     res.status(400).json({ success: false, error: "Invalid collection" });
     return;

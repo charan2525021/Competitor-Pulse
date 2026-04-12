@@ -13,6 +13,8 @@ import { useTheme } from "./context/ThemeContext";
 import { useAuth } from "./context/AuthContext";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Radar, BarChart3, Sun, Moon, Zap, Users, FileText, Database,
   BookOpen, Target, PanelLeftClose, PanelLeftOpen, Settings, Brain, Fish, LogOut, User, Shield, Clock, Mail, Phone, Pencil, Check, X, Trash2,
@@ -138,19 +140,19 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="flex h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
+      <div className="flex h-screen bg-background">
         {/* ── Left Sidebar ── */}
-        <aside className="flex flex-col border-r shrink-0 transition-all duration-300 ease-in-out"
-          style={{ width: sidebarOpen ? 220 : 64, minWidth: sidebarOpen ? 220 : 64, backgroundColor: "var(--bg-sidebar)", borderColor: "var(--border)" }}>
-
-          {/* Logo — always visible */}
-          <div className="flex items-center justify-center px-3 py-1.5 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"
-              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
+        <aside className={cn(
+          "flex flex-col border-r border-sidebar-border bg-sidebar shrink-0 transition-all duration-300 ease-in-out",
+          sidebarOpen ? "w-[220px] min-w-[220px]" : "w-16 min-w-16"
+        )}>
+          {/* Logo */}
+          <div className="flex items-center justify-center px-3 py-1.5 shrink-0 border-b border-sidebar-border">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md shrink-0 bg-gradient-to-br from-indigo-500 to-violet-500">
               <Radar size={20} />
             </div>
             {sidebarOpen && (
-              <span className="ml-3 text-base font-bold animate-fade-in truncate" style={{ color: "var(--text-primary)" }}>
+              <span className="ml-3 text-base font-bold animate-fade-in truncate text-sidebar-foreground">
                 CompetitorPulse
               </span>
             )}
@@ -161,26 +163,18 @@ function App() {
             {NAV_ITEMS.map((item) => <SidebarLink key={item.to} {...item} collapsed={!sidebarOpen} />)}
           </nav>
 
-          {/* Expand/Collapse + Logout — bottom of menu */}
-          <div className="px-2 py-3 shrink-0 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
+          {/* Bottom Actions */}
+          <div className="px-2 py-3 shrink-0 space-y-1 border-t border-sidebar-border">
             <button onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
-              style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-              <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: "var(--bg-input)" }}>
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-muted-foreground hover:bg-sidebar-accent">
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-muted">
                 {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
               </span>
               {sidebarOpen && <span className="text-sm font-medium animate-fade-in">Collapse</span>}
             </button>
             <button onClick={logout}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
-              style={{ color: "#ef4444" }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(239,68,68,0.08)")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-              <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: "rgba(239,68,68,0.08)" }}>
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-rose-500 hover:bg-rose-500/10">
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-rose-500/10">
                 <LogOut size={18} />
               </span>
               {sidebarOpen && <span className="text-sm font-medium animate-fade-in">Logout</span>}
@@ -191,68 +185,63 @@ function App() {
         {/* ── Main Area ── */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Top bar */}
-          <header className="flex items-center justify-end gap-2 px-4 py-2 shrink-0"
-            style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-card)" }}>
+          <header className="flex items-center justify-end gap-2 px-4 py-2 shrink-0 border-b border-border bg-card">
             <TopButton to="/docs" icon={<BookOpen size={16} />} label="Docs" />
-            <button onClick={() => setSettingsOpen(!settingsOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:scale-105"
-              style={{
-                backgroundColor: settingsOpen ? "var(--accent-soft)" : "var(--bg-input)",
-                color: settingsOpen ? "var(--accent)" : "var(--text-secondary)",
-                border: `1px solid ${settingsOpen ? "var(--accent)" : "var(--border)"}`,
-              }}>
+            <Button
+              variant={settingsOpen ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="gap-1.5 text-xs"
+            >
               <Settings size={16} /> Settings
-            </button>
-            <button onClick={toggleTheme}
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-110"
-              style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+            </Button>
+            <Button variant="outline" size="icon-sm" onClick={toggleTheme}
               title={theme === "dark" ? "Light mode" : "Dark mode"}>
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+            </Button>
             {/* API Key Status Icons */}
             <div className="flex items-center gap-1.5">
-              <div className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-default"
-                style={{ backgroundColor: "var(--bg-input)" }} title={filters.tinyfishApiKey ? "TinyFish: Connected" : "TinyFish: No API key"}>
-                <Fish size={15} style={{ color: "#f97316" }} />
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
-                  style={{ backgroundColor: filters.tinyfishApiKey ? "#22c55e" : "#ef4444", borderColor: "var(--bg-card)" }} />
+              <div className="relative w-8 h-8 rounded-lg flex items-center justify-center bg-muted transition-all hover:scale-110 cursor-default"
+                title={filters.tinyfishApiKey ? "TinyFish: Connected" : "TinyFish: No API key"}>
+                <Fish size={15} className="text-orange-500" />
+                <span className={cn(
+                  "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card",
+                  filters.tinyfishApiKey ? "bg-emerald-500" : "bg-rose-500"
+                )} />
               </div>
-              <div className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:scale-110 cursor-default"
-                style={{ backgroundColor: "var(--bg-input)" }} title={filters.llm?.apiKey ? "LLM: Connected" : "LLM: No API key"}>
-                <Brain size={15} style={{ color: "#8b5cf6" }} />
-                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
-                  style={{ backgroundColor: filters.llm?.apiKey ? "#22c55e" : "#ef4444", borderColor: "var(--bg-card)" }} />
+              <div className="relative w-8 h-8 rounded-lg flex items-center justify-center bg-muted transition-all hover:scale-110 cursor-default"
+                title={filters.llm?.apiKey ? "LLM: Connected" : "LLM: No API key"}>
+                <Brain size={15} className="text-violet-500" />
+                <span className={cn(
+                  "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card",
+                  filters.llm?.apiKey ? "bg-emerald-500" : "bg-rose-500"
+                )} />
               </div>
             </div>
             {/* Profile Icon */}
             <div className="relative" ref={profileRef}>
               <button onClick={() => setProfileOpen(!profileOpen)}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
-                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 bg-gradient-to-br from-indigo-500 to-violet-500 text-white"
                 title="Profile">
                 <User size={16} />
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-12 w-72 rounded-xl shadow-xl z-50 overflow-hidden"
-                  style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                <div className="absolute right-0 top-12 w-72 rounded-xl shadow-xl z-50 overflow-hidden bg-card border border-border">
                   {/* Profile header */}
-                  <div className="px-5 pt-5 pb-4 text-center relative" style={{ borderBottom: "1px solid var(--border)", background: "linear-gradient(135deg, #6366f115, #8b5cf615)" }}>
-                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
-                      style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}>
+                  <div className="px-5 pt-5 pb-4 text-center relative border-b border-border bg-gradient-to-br from-indigo-500/5 to-violet-500/5">
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 bg-gradient-to-br from-indigo-500 to-violet-500 text-white">
                       <User size={24} />
                     </div>
                     {profileEditing ? (
                       <input value={editForm.username} onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))}
-                        className="w-full text-sm font-bold text-center rounded-lg px-2 py-1 outline-none"
-                        style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                        className="w-full text-sm font-bold text-center rounded-lg px-2 py-1 outline-none bg-muted text-foreground border border-border" />
                     ) : (
-                      <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{user?.username || "User"}</div>
+                      <div className="text-sm font-bold text-foreground">{user?.username || "User"}</div>
                     )}
-                    <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{user?.role || "Admin"}</div>
+                    <div className="text-xs mt-0.5 text-muted-foreground">{user?.role || "Admin"}</div>
                     {!profileEditing && (
                       <button onClick={() => { setEditForm({ username: user?.username || "", phone: user?.phone || "", role: user?.role || "" }); setProfileEditing(true); }}
-                        className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110"
-                        style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                        className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 bg-muted text-muted-foreground border border-border"
                         title="Edit Profile">
                         <Pencil size={12} />
                       </button>
@@ -261,65 +250,60 @@ function App() {
                   {/* Profile details */}
                   <div className="px-4 py-3 space-y-2.5">
                     <div className="flex items-center gap-3">
-                      <Shield size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <Shield size={14} className="text-primary shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Role</div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Role</div>
                         {profileEditing ? (
                           <input value={editForm.role} onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
-                            className="w-full text-xs font-medium rounded px-1.5 py-0.5 outline-none mt-0.5"
-                            style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                            className="w-full text-xs font-medium rounded px-1.5 py-0.5 outline-none mt-0.5 bg-muted text-foreground border border-border" />
                         ) : (
-                          <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{user?.role || "Admin"}</div>
+                          <div className="text-xs font-medium text-foreground">{user?.role || "Admin"}</div>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Mail size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <Mail size={14} className="text-primary shrink-0" />
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Email</div>
-                        <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{(profileEditing ? editForm.username : user?.username) || "admin"}@competitorpulse.io</div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Email</div>
+                        <div className="text-xs font-medium text-foreground">{(profileEditing ? editForm.username : user?.username) || "admin"}@competitorpulse.io</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Phone size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <Phone size={14} className="text-primary shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Mobile</div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Mobile</div>
                         {profileEditing ? (
                           <input value={editForm.phone} onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
-                            className="w-full text-xs font-medium rounded px-1.5 py-0.5 outline-none mt-0.5"
-                            style={{ backgroundColor: "var(--bg-input)", color: "var(--text-primary)", border: "1px solid var(--border)" }} />
+                            className="w-full text-xs font-medium rounded px-1.5 py-0.5 outline-none mt-0.5 bg-muted text-foreground border border-border" />
                         ) : (
-                          <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{user?.phone || "+1 (555) 123-4567"}</div>
+                          <div className="text-xs font-medium text-foreground">{user?.phone || "+1 (555) 123-4567"}</div>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Clock size={14} style={{ color: "var(--accent)", flexShrink: 0 }} />
+                      <Clock size={14} className="text-primary shrink-0" />
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Login Time</div>
-                        <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{user?.loginTime ? new Date(user.loginTime).toLocaleString() : "—"}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Login Time</div>
+                        <div className="text-xs font-medium text-foreground">{user?.loginTime ? new Date(user.loginTime).toLocaleString() : "—"}</div>
                       </div>
                     </div>
                   </div>
                   {/* Actions */}
-                  <div className="px-4 py-3 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+                  <div className="px-4 py-3 space-y-2 border-t border-border">
                     {profileEditing ? (
                       <div className="flex gap-2">
                         <button onClick={() => { updateProfile({ username: editForm.username.trim() || user?.username || "admin", phone: editForm.phone, role: editForm.role }); setProfileEditing(false); }}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110"
-                          style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110 bg-emerald-500/10 text-emerald-500">
                           <Check size={14} /> Save
                         </button>
                         <button onClick={() => setProfileEditing(false)}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110"
-                          style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)" }}>
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110 bg-muted text-muted-foreground">
                           <X size={14} /> Cancel
                         </button>
                       </div>
                     ) : (
                       <button onClick={() => { setProfileOpen(false); logout(); }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110"
-                        style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 hover:brightness-110 bg-rose-500/10 text-rose-500">
                         <LogOut size={14} /> Sign Out
                       </button>
                     )}
@@ -346,17 +330,19 @@ function App() {
 
             {/* Settings slide-out panel */}
             {settingsOpen && (
-              <aside className="w-80 shrink-0 border-l overflow-y-auto p-4 animate-slide-right"
-                style={{ backgroundColor: "var(--bg-sidebar)", borderColor: "var(--border)" }}>
+              <aside className="w-80 shrink-0 border-l border-border overflow-y-auto p-4 animate-slide-right bg-sidebar">
                 <SettingsPanel filters={filters} onChange={setFilters} mode="keys-only" />
                 {isAdmin && (
-                  <div className="mt-6 pt-4" style={{ borderTop: "1px solid var(--border)" }}>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)" }}>Admin — Danger Zone</div>
-                    <button onClick={() => { if (window.confirm("Delete ALL data? This removes all history, leads, intel records, campaigns, and fill history. This cannot be undone.")) clearAllData(); }}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 hover:scale-[1.02]"
-                      style={{ backgroundColor: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1.5px solid rgba(239,68,68,0.2)" }}>
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">Admin — Danger Zone</div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-rose-500 border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-500"
+                      onClick={() => { if (window.confirm("Delete ALL data? This removes all history, leads, intel records, campaigns, and fill history. This cannot be undone.")) clearAllData(); }}
+                    >
                       <Trash2 size={14} /> Clear All Data
-                    </button>
+                    </Button>
                   </div>
                 )}
               </aside>
@@ -374,15 +360,9 @@ function TopButton({ to, icon, label }: { to: string; icon: React.ReactNode; lab
   const location = useLocation();
   const active = location.pathname === to;
   return (
-    <button onClick={() => navigate(to)}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:scale-105"
-      style={{
-        backgroundColor: active ? "var(--accent-soft)" : "var(--bg-input)",
-        color: active ? "var(--accent)" : "var(--text-secondary)",
-        border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-      }}>
+    <Button variant={active ? "default" : "outline"} size="sm" onClick={() => navigate(to)} className="gap-1.5 text-xs">
       {icon} {label}
-    </button>
+    </Button>
   );
 }
 
@@ -406,23 +386,26 @@ function SidebarLink({ to, icon: Icon, label, color, collapsed }: {
       }}
       onMouseLeave={() => setHovered(false)}>
       <NavLink to={to}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 no-underline"
-        style={{
-          backgroundColor: isActive ? `${color}15` : hovered ? "var(--bg-hover)" : "transparent",
-        }}>
+        className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 no-underline",
+          isActive ? "" : hovered ? "bg-sidebar-accent" : ""
+        )}
+        style={isActive ? { backgroundColor: `${color}15` } : undefined}>
         {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full" style={{ backgroundColor: color }} />}
-        <span className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200"
+        <span className={cn(
+          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200",
+          hovered && "scale-110"
+        )}
           style={{
             backgroundColor: `${color}15`,
             color: color,
-            transform: hovered ? "scale(1.1)" : "scale(1)",
             boxShadow: isActive ? `0 2px 8px ${color}25` : "none",
           }}>
           <Icon size={18} />
         </span>
         {!collapsed && (
-          <span className="text-sm font-medium animate-fade-in truncate"
-            style={{ color: isActive ? color : "var(--text-primary)" }}>{label}</span>
+          <span className={cn("text-sm font-medium animate-fade-in truncate", isActive ? "" : "text-sidebar-foreground")}
+            style={isActive ? { color } : undefined}>{label}</span>
         )}
       </NavLink>
 
@@ -430,8 +413,8 @@ function SidebarLink({ to, icon: Icon, label, color, collapsed }: {
       {collapsed && hovered && (
         <div className="fixed z-[9999] pointer-events-none animate-scale-in"
           style={{ left: 72, top: tooltipY - 14 }}>
-          <div className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
-            style={{ backgroundColor: color, color: "#fff", boxShadow: `0 4px 12px ${color}40` }}>
+          <div className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap text-white shadow-lg"
+            style={{ backgroundColor: color }}>
             {label}
           </div>
         </div>

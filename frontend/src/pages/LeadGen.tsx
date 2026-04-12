@@ -6,6 +6,8 @@ import {
   X, RefreshCw,
 } from "lucide-react";
 import { LiveLogs } from "../components/LiveLogs";
+import { HistoryPanel } from "../components/HistoryPanel";
+import type { HistoryPanelItem } from "../components/HistoryPanel";
 import {
   startLeadSearch, createLeadLogStream, fetchLeadResults, cancelLeadSearch,
   saveSenderIdentity, getSenderIdentities, deleteSenderApi,
@@ -13,6 +15,11 @@ import {
 } from "../services/api";
 import type { LogEntry } from "../hooks/useAgentLogs";
 import { ScrollReveal } from "../components/ScrollReveal";
+import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 export interface Lead {
   id: string; name: string; company: string; role: string; email: string;
@@ -147,33 +154,48 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
 
   const emailLeadCount = leads.filter((l) => selectedLeads.has(l.id) && l.email).length;
 
+  const historyItems: HistoryPanelItem[] = leadHistory.map((h) => ({
+    id: h.id,
+    label: h.query,
+    sublabel: h.status === "done" ? `${h.leadCount} leads found` : undefined,
+    timestamp: h.timestamp,
+    status: h.status,
+  }));
+
   return (
-    <div className="min-h-screen p-6 space-y-5 page-enter" style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <HistoryPanel
+      title="Search History"
+      color="#f59e0b"
+      icon={<Clock size={14} />}
+      items={historyItems}
+      onDelete={(id) => onDeleteHistory(id)}
+    >
+    <div className="min-h-screen p-6 space-y-5 page-enter max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #f59e0b, #ef4444)", color: "#fff" }}><Users size={20} /></div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Lead Generation</h1>
-          <p className="text-xs" style={{ color: "var(--text-muted)" }}>Find contacts · Build lead lists · Create campaigns · Send outreach</p>
+          <h1 className="text-xl font-bold text-foreground">Lead Generation</h1>
+          <p className="text-xs text-muted-foreground">Find contacts · Build lead lists · Create campaigns · Send outreach</p>
         </div>
-        <span className="text-xs px-3 py-1.5 rounded-full font-medium" style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}>{leads.length} lead{leads.length !== 1 ? "s" : ""}</span>
+        <Badge variant="secondary" className="text-xs px-3 py-1.5 rounded-full font-medium text-primary" style={{ backgroundColor: "var(--accent-soft)" }}>{leads.length} lead{leads.length !== 1 ? "s" : ""}</Badge>
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex gap-2 p-1 rounded-xl" style={{ backgroundColor: "var(--bg-input)" }}>
-        <button onClick={() => setActiveTab("leads")} className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: activeTab === "leads" ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "transparent", color: activeTab === "leads" ? "#fff" : "var(--text-secondary)" }}>
+      <div className="flex gap-2 p-1 rounded-xl bg-muted">
+        <button onClick={() => setActiveTab("leads")} className={cn("flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all", activeTab !== "leads" && "text-muted-foreground")}
+          style={{ background: activeTab === "leads" ? "linear-gradient(135deg, #f59e0b, #ef4444)" : "transparent", ...(activeTab === "leads" ? { color: "#fff" } : {}) }}>
           <Users size={14} /> Leads & Search
         </button>
-        <button onClick={() => setActiveTab("campaigns")} className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: activeTab === "campaigns" ? "linear-gradient(135deg, #8b5cf6, #6366f1)" : "transparent", color: activeTab === "campaigns" ? "#fff" : "var(--text-secondary)" }}>
+        <button onClick={() => setActiveTab("campaigns")} className={cn("flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all", activeTab !== "campaigns" && "text-muted-foreground")}
+          style={{ background: activeTab === "campaigns" ? "linear-gradient(135deg, #8b5cf6, #6366f1)" : "transparent", ...(activeTab === "campaigns" ? { color: "#fff" } : {}) }}>
           <Megaphone size={14} /> Campaigns & Outreach
           {campaigns.length > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.2)" }}>{campaigns.length}</span>}
         </button>
       </div>
 
       {statusMsg && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium animate-fade-in" style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)" }}>
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium animate-fade-in text-primary" style={{ backgroundColor: "var(--accent-soft)", border: "1px solid var(--accent)" }}>
           <CheckCircle2 size={14} /> {statusMsg}
           <button onClick={() => setStatusMsg("")} className="ml-auto"><X size={12} /></button>
         </div>
@@ -181,44 +203,21 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
 
       {activeTab === "leads" ? (
         <>
-          {/* Search History */}
-          {leadHistory.length > 0 && (
-            <div className="rounded-2xl p-4" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(59,130,246,0.15)", color: "#3b82f6" }}><Clock size={13} /></span>
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Search History</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {leadHistory.map((h) => (
-                  <div key={h.id} className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition-all duration-200 group" style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${h.status === "running" ? "animate-pulse-dot" : ""}`} style={{ backgroundColor: h.status === "running" ? "#eab308" : h.status === "done" ? "#22c55e" : "#ef4444" }} />
-                    <span className="font-medium truncate max-w-[180px]" style={{ color: "var(--text-primary)" }} title={h.query}>{h.query}</span>
-                    {h.status === "done" && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e" }}>{h.leadCount}</span>}
-                    <span className="text-[9px]" style={{ color: "var(--text-muted)" }}>{new Date(h.timestamp).toLocaleDateString()}</span>
-                    <button onClick={() => onDeleteHistory(h.id)} className="w-4 h-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110" style={{ color: "#ef4444" }}><Trash2 size={10} /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Search */}
           <ScrollReveal animation="scroll-fade-up">
-          <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+          <div className="rounded-2xl p-5 bg-card border border-border shadow-md">
             <div className="flex items-center gap-2 mb-3">
               <span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b" }}><Search size={13} /></span>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Prospect Search</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Prospect Search</span>
             </div>
             <div className="flex gap-2">
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder='e.g. "VP of Engineering at fintech startups in SF"' className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all duration-200"
-                style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
-              <button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()} className="px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-200 flex items-center gap-2 shrink-0"
-                style={{ background: isSearching ? "var(--bg-hover)" : "linear-gradient(135deg, #f59e0b, #ef4444)", opacity: !searchQuery.trim() ? 0.5 : 1, boxShadow: "0 2px 8px rgba(245,158,11,0.3)" }}>
+              <Input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder='e.g. "VP of Engineering at fintech startups in SF"' className="flex-1 h-auto px-4 py-2.5 rounded-xl text-sm" />
+              <Button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()} className="h-auto px-5 py-2.5 rounded-xl text-sm font-medium text-white shrink-0"
+                style={{ background: isSearching ? "var(--bg-hover)" : "linear-gradient(135deg, #f59e0b, #ef4444)", boxShadow: "0 2px 8px rgba(245,158,11,0.3)" }}>
                 {isSearching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} {isSearching ? "Searching..." : "Find Leads"}
-              </button>
-              {isSearching && <button onClick={handleCancel} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shrink-0" style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1.5px solid rgba(239,68,68,0.3)" }}><XCircle size={14} /> Stop</button>}
+              </Button>
+              {isSearching && <Button onClick={handleCancel} variant="ghost" className="h-auto px-4 py-2.5 rounded-xl text-sm font-medium shrink-0" style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1.5px solid rgba(239,68,68,0.3)" }}><XCircle size={14} /> Stop</Button>}
             </div>
           </div>
           </ScrollReveal>
@@ -233,13 +232,13 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
         <div className="space-y-5">
           {/* Sender Identity */}
           <ScrollReveal animation="scroll-fade-up">
-          <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+          <div className="rounded-2xl p-5 bg-card border border-border shadow-md">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(59,130,246,0.15)", color: "#3b82f6" }}><User size={14} /></span>
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Sender Identity</span>
-                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Your name and email shown to recipients. Emails are sent directly from this machine — no SMTP server needed.</p>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sender Identity</span>
+                  <p className="text-[10px] text-muted-foreground">Your name and email shown to recipients. Emails are sent directly from this machine — no SMTP server needed.</p>
                 </div>
               </div>
               <button onClick={() => setShowSenderForm(!showSenderForm)} className="text-[10px] px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition-all hover:scale-105"
@@ -250,11 +249,11 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
             {senders.length > 0 && (
               <div className="space-y-2 mb-4">
                 {senders.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3 px-4 py-3 rounded-xl group" style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
+                  <div key={s.id} className="flex items-center gap-3 px-4 py-3 rounded-xl group bg-muted border border-border">
                     <Mail size={14} style={{ color: "#3b82f6", flexShrink: 0 }} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{s.fromName}</div>
-                      <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.fromEmail}</div>
+                      <div className="text-xs font-medium text-foreground">{s.fromName}</div>
+                      <div className="text-[10px] text-muted-foreground">{s.fromEmail}</div>
                     </div>
                     <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: s.useGmailSmtp ? "rgba(234,179,8,0.1)" : "rgba(34,197,94,0.1)", color: s.useGmailSmtp ? "#eab308" : "#22c55e" }}>{s.useGmailSmtp ? "Gmail SMTP" : "Direct"}</span>
                     <button onClick={() => handleDeleteSender(s.id)} className="w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all" style={{ color: "#ef4444" }}><Trash2 size={11} /></button>
@@ -263,31 +262,29 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
               </div>
             )}
             {showSenderForm && (
-              <div className="rounded-xl p-4 space-y-3 animate-scale-in" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)" }}>
+              <div className="rounded-xl p-4 space-y-3 animate-scale-in bg-muted border border-border">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Your Name</label>
-                    <input type="text" value={senderForm.fromName} onChange={(e) => setSenderForm({ ...senderForm, fromName: e.target.value })} placeholder="John Doe"
-                      className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Your Name</label>
+                    <Input type="text" value={senderForm.fromName} onChange={(e) => setSenderForm({ ...senderForm, fromName: e.target.value })} placeholder="John Doe"
+                      className="w-full px-3 py-2 rounded-lg text-xs h-auto bg-card" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Your Email</label>
-                    <input type="email" value={senderForm.fromEmail} onChange={(e) => setSenderForm({ ...senderForm, fromEmail: e.target.value })} placeholder="john@yourcompany.com"
-                      className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Your Email</label>
+                    <Input type="email" value={senderForm.fromEmail} onChange={(e) => setSenderForm({ ...senderForm, fromEmail: e.target.value })} placeholder="john@yourcompany.com"
+                      className="w-full px-3 py-2 rounded-lg text-xs h-auto bg-card" />
                   </div>
                 </div>
 
                 {/* Gmail SMTP Toggle */}
-                <div className="rounded-lg p-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                <div className="rounded-lg p-3 bg-card border border-border">
                   <div className="flex items-center justify-between cursor-pointer"
                     onClick={() => setSenderForm({ ...senderForm, useGmailSmtp: !senderForm.useGmailSmtp })}>
                     <div className="flex items-center gap-2">
-                      <Mail size={14} style={{ color: senderForm.useGmailSmtp ? "#eab308" : "var(--text-muted)" }} />
+                      <Mail size={14} style={{ color: senderForm.useGmailSmtp ? "#eab308" : undefined }} className={cn(!senderForm.useGmailSmtp && "text-muted-foreground")} />
                       <div>
-                        <div className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>Gmail SMTP Server</div>
-                        <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>Use smtp.gmail.com for reliable delivery. Requires an App Password.</div>
+                        <div className="text-xs font-semibold text-foreground">Gmail SMTP Server</div>
+                        <div className="text-[10px] text-muted-foreground">Use smtp.gmail.com for reliable delivery. Requires an App Password.</div>
                       </div>
                     </div>
                     <div className="shrink-0 ml-3 w-10 h-5 rounded-full transition-all duration-200" style={{ backgroundColor: senderForm.useGmailSmtp ? "#eab308" : "var(--border)" }}>
@@ -298,10 +295,9 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
                   {senderForm.useGmailSmtp && (
                     <div className="mt-3 space-y-2 animate-fade-in">
                       <div>
-                        <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Gmail App Password</label>
-                        <input type="password" value={senderForm.gmailAppPassword} onChange={(e) => setSenderForm({ ...senderForm, gmailAppPassword: e.target.value })} placeholder="xxxx xxxx xxxx xxxx"
-                          className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                          onFocus={(e) => (e.currentTarget.style.borderColor = "#eab308")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                        <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Gmail App Password</label>
+                        <Input type="password" value={senderForm.gmailAppPassword} onChange={(e) => setSenderForm({ ...senderForm, gmailAppPassword: e.target.value })} placeholder="xxxx xxxx xxxx xxxx"
+                          className="w-full px-3 py-2 rounded-lg text-xs h-auto bg-muted" />
                       </div>
                       <div className="text-[10px] px-2 py-1.5 rounded-lg" style={{ backgroundColor: "rgba(234,179,8,0.08)", color: "#eab308" }}>
                         Go to myaccount.google.com → Security → 2-Step Verification → App Passwords to generate one.
@@ -310,15 +306,15 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
                   )}
                 </div>
 
-                <button onClick={handleSaveSender} disabled={!senderForm.fromName || !senderForm.fromEmail || (senderForm.useGmailSmtp && !senderForm.gmailAppPassword)}
-                  className="w-full py-2 rounded-xl text-xs font-medium text-white flex items-center justify-center gap-1.5 transition-all"
-                  style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)", opacity: !senderForm.fromName || !senderForm.fromEmail || (senderForm.useGmailSmtp && !senderForm.gmailAppPassword) ? 0.5 : 1 }}>
+                <Button onClick={handleSaveSender} disabled={!senderForm.fromName || !senderForm.fromEmail || (senderForm.useGmailSmtp && !senderForm.gmailAppPassword)}
+                  className="w-full py-2 rounded-xl text-xs font-medium text-white h-auto"
+                  style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)" }}>
                   <Check size={12} /> Save Sender
-                </button>
+                </Button>
               </div>
             )}
             {senders.length === 0 && !showSenderForm && (
-              <div className="text-center py-6" style={{ color: "var(--text-muted)" }}>
+              <div className="text-center py-6 text-muted-foreground">
                 <Mail size={28} style={{ opacity: 0.15, margin: "0 auto 8px" }} />
                 <p className="text-xs">Add a sender identity to start sending campaigns.</p>
                 <p className="text-[10px] mt-1">Emails are delivered directly via MX resolution — no external mail server required.</p>
@@ -329,13 +325,13 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
 
           {/* Create Campaign */}
           <ScrollReveal animation="scroll-fade-up" delay={100}>
-          <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+          <div className="rounded-2xl p-5 bg-card border border-border shadow-md">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}><Megaphone size={14} /></span>
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Create Campaign</span>
-                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>Compose personalized emails and send to selected leads</p>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Create Campaign</span>
+                  <p className="text-[10px] text-muted-foreground">Compose personalized emails and send to selected leads</p>
                 </div>
               </div>
               <button onClick={() => setShowCampaignForm(!showCampaignForm)} className="text-[10px] px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition-all hover:scale-105"
@@ -347,79 +343,76 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
               <div className="space-y-3 animate-scale-in">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Campaign Name</label>
-                    <input type="text" value={campaignForm.name} onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })} placeholder="Q2 Outreach - Fintech VPs"
-                      className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Campaign Name</label>
+                    <Input type="text" value={campaignForm.name} onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })} placeholder="Q2 Outreach - Fintech VPs"
+                      className="w-full px-3 py-2 rounded-xl text-sm h-auto bg-muted" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Send As</label>
+                    <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Send As</label>
                     <select value={campaignForm.senderId} onChange={(e) => setCampaignForm({ ...campaignForm, senderId: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}>
+                      className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-muted border border-border text-foreground">
                       <option value="">Select sender...</option>
                       {senders.map((s) => <option key={s.id} value={s.id}>{s.fromName} ({s.fromEmail})</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Subject Line</label>
-                  <input type="text" value={campaignForm.subject} onChange={(e) => setCampaignForm({ ...campaignForm, subject: e.target.value })} placeholder="Quick question about {{company}}"
-                    className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                  <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Subject Line</label>
+                  <Input type="text" value={campaignForm.subject} onChange={(e) => setCampaignForm({ ...campaignForm, subject: e.target.value })} placeholder="Quick question about {{company}}"
+                    className="w-full px-3 py-2 rounded-xl text-sm h-auto bg-muted" />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: "var(--text-muted)" }}>Email Body</label>
+                  <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block text-muted-foreground">Email Body</label>
                   <textarea value={campaignForm.body} onChange={(e) => setCampaignForm({ ...campaignForm, body: e.target.value })}
                     placeholder={"Hi {{first_name}},\n\nI noticed {{company}} is expanding their engineering team...\n\nWould love to connect.\n\nBest,\nYour Name"}
-                    rows={8} className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    rows={8} className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none bg-muted border border-border text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] transition-[color,box-shadow]" />
                 </div>
-                <div className="flex items-center gap-2 text-[10px] flex-wrap" style={{ color: "var(--text-muted)" }}>
+                <div className="flex items-center gap-2 text-[10px] flex-wrap text-muted-foreground">
                   <span>Variables: </span>
                   {["{{name}}", "{{first_name}}", "{{company}}", "{{role}}", "{{email}}"].map((v) => (
-                    <span key={v} className="px-1.5 py-0.5 rounded cursor-pointer hover:scale-105 transition-all" style={{ backgroundColor: "var(--bg-input)", color: "var(--accent)" }}
+                    <span key={v} className="px-1.5 py-0.5 rounded cursor-pointer hover:scale-105 transition-all bg-muted text-primary"
                       onClick={() => setCampaignForm({ ...campaignForm, body: campaignForm.body + v })}>{v}</span>
                   ))}
                 </div>
                 <div className="flex items-center gap-3 pt-2">
-                  <div className="flex-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <div className="flex-1 text-xs text-muted-foreground">
                     {selectedLeads.size > 0 ? <span>{emailLeadCount} of {selectedLeads.size} selected leads have emails</span> : <span style={{ color: "#f59e0b" }}>Go to Leads tab and select leads first</span>}
                   </div>
-                  <button onClick={handleCreateCampaign} disabled={!campaignForm.name || !campaignForm.subject || !campaignForm.body || !campaignForm.senderId || emailLeadCount === 0}
-                    className="px-6 py-2.5 rounded-xl text-sm font-medium text-white flex items-center gap-2 transition-all"
-                    style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)", opacity: !campaignForm.name || emailLeadCount === 0 ? 0.5 : 1, boxShadow: "0 2px 8px rgba(139,92,246,0.3)" }}>
+                  <Button onClick={handleCreateCampaign} disabled={!campaignForm.name || !campaignForm.subject || !campaignForm.body || !campaignForm.senderId || emailLeadCount === 0}
+                    className="h-auto px-6 py-2.5 rounded-xl text-sm font-medium text-white"
+                    style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)", boxShadow: "0 2px 8px rgba(139,92,246,0.3)" }}>
                     <Megaphone size={14} /> Create Campaign
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
-            {!showCampaignForm && senders.length > 0 && <div className="text-center py-4" style={{ color: "var(--text-muted)" }}><p className="text-xs">Select leads from the Leads tab, then create a campaign here.</p></div>}
+            {!showCampaignForm && senders.length > 0 && <div className="text-center py-4 text-muted-foreground"><p className="text-xs">Select leads from the Leads tab, then create a campaign here.</p></div>}
           </div>
           </ScrollReveal>
 
           {/* Campaign List */}
           {campaigns.length > 0 && (
             <ScrollReveal animation="scroll-fade-up" delay={200}>
-            <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+            <div className="rounded-2xl p-5 bg-card border border-border shadow-md">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b" }}><Mail size={14} /></span>
-                  <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Campaigns ({campaigns.length})</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Campaigns ({campaigns.length})</span>
                 </div>
-                <button onClick={refreshCampaigns} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110" style={{ backgroundColor: "var(--bg-input)", color: "var(--text-muted)", border: "1px solid var(--border)" }}><RefreshCw size={12} /></button>
+                <button onClick={refreshCampaigns} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 bg-muted text-muted-foreground border border-border"><RefreshCw size={12} /></button>
               </div>
               <div className="space-y-3">
                 {campaigns.map((c) => {
                   const sc = c.status === "sent" ? "#22c55e" : c.status === "sending" ? "#eab308" : c.status === "failed" ? "#ef4444" : "var(--text-muted)";
                   return (
-                    <div key={c.id} className="rounded-xl p-4 group transition-all" style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
+                    <div key={c.id} className="rounded-xl p-4 group transition-all bg-muted border border-border">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{c.name}</span>
+                            <span className="text-sm font-semibold text-foreground">{c.name}</span>
                             <span className="text-[9px] px-2 py-0.5 rounded-full font-bold capitalize" style={{ backgroundColor: `${sc}15`, color: sc }}>{c.status}</span>
                           </div>
-                          <div className="text-[10px] mt-1 flex items-center gap-3" style={{ color: "var(--text-muted)" }}>
+                          <div className="text-[10px] mt-1 flex items-center gap-3 text-muted-foreground">
                             <span>Subject: {c.subject}</span><span>·</span><span>{c.stats.total} recipients</span>
                             {c.stats.sent > 0 && <><span>·</span><span style={{ color: "#22c55e" }}>{c.stats.sent} sent</span></>}
                             {c.stats.failed > 0 && <><span>·</span><span style={{ color: "#ef4444" }}>{c.stats.failed} failed</span></>}
@@ -435,7 +428,7 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
                               {sendingCampaignId === c.id ? "Sending..." : "Send Now"}
                             </button>
                           )}
-                          <button onClick={() => handleViewCampaign(c)} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110" style={{ backgroundColor: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}><Eye size={12} /></button>
+                          <button onClick={() => handleViewCampaign(c)} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 bg-card text-muted-foreground border border-border"><Eye size={12} /></button>
                           <button onClick={() => handleDeleteCampaign(c.id)} className="w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110" style={{ color: "#ef4444" }}><Trash2 size={12} /></button>
                         </div>
                       </div>
@@ -449,38 +442,38 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
 
           {/* Campaign Detail */}
           {viewingCampaign && (
-            <div className="rounded-2xl p-5 animate-scale-in" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--accent)", boxShadow: "0 4px 24px rgba(99,102,241,0.15)" }}>
+            <div className="rounded-2xl p-5 animate-scale-in bg-card border border-border" style={{ borderColor: "var(--accent)", boxShadow: "0 4px 24px rgba(99,102,241,0.15)" }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(99,102,241,0.15)", color: "var(--accent)" }}><Eye size={14} /></span>
-                  <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{viewingCampaign.name}</span>
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center text-primary" style={{ backgroundColor: "rgba(99,102,241,0.15)" }}><Eye size={14} /></span>
+                  <span className="text-sm font-semibold text-foreground">{viewingCampaign.name}</span>
                 </div>
-                <button onClick={() => setViewingCampaign(null)} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ color: "var(--text-muted)" }}><X size={14} /></button>
+                <button onClick={() => setViewingCampaign(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground"><X size={14} /></button>
               </div>
               <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "var(--bg-input)" }}><div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{viewingCampaign.stats.total}</div><div className="text-[10px]" style={{ color: "var(--text-muted)" }}>Total</div></div>
-                <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "rgba(34,197,94,0.08)" }}><div className="text-lg font-bold" style={{ color: "#22c55e" }}>{viewingCampaign.stats.sent}</div><div className="text-[10px]" style={{ color: "var(--text-muted)" }}>Sent</div></div>
-                <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "rgba(239,68,68,0.08)" }}><div className="text-lg font-bold" style={{ color: "#ef4444" }}>{viewingCampaign.stats.failed}</div><div className="text-[10px]" style={{ color: "var(--text-muted)" }}>Failed</div></div>
+                <div className="rounded-xl p-3 text-center bg-muted"><div className="text-lg font-bold text-foreground">{viewingCampaign.stats.total}</div><div className="text-[10px] text-muted-foreground">Total</div></div>
+                <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "rgba(34,197,94,0.08)" }}><div className="text-lg font-bold" style={{ color: "#22c55e" }}>{viewingCampaign.stats.sent}</div><div className="text-[10px] text-muted-foreground">Sent</div></div>
+                <div className="rounded-xl p-3 text-center" style={{ backgroundColor: "rgba(239,68,68,0.08)" }}><div className="text-lg font-bold" style={{ color: "#ef4444" }}>{viewingCampaign.stats.failed}</div><div className="text-[10px] text-muted-foreground">Failed</div></div>
               </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Recipients</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider mb-2 text-muted-foreground">Recipients</div>
               <div className="space-y-1.5 max-h-60 overflow-y-auto mb-4">
                 {viewingCampaign.recipients.map((r: any) => (
-                  <div key={r.leadId} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: "var(--bg-input)" }}>
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.status === "sent" ? "#22c55e" : r.status === "failed" ? "#ef4444" : "var(--text-muted)" }} />
-                    <span className="font-medium" style={{ color: "var(--text-primary)" }}>{r.name}</span>
-                    <span style={{ color: "var(--text-muted)" }}>·</span>
+                  <div key={r.leadId} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-muted">
+                    <span className={cn("w-2 h-2 rounded-full")} style={{ backgroundColor: r.status === "sent" ? "#22c55e" : r.status === "failed" ? "#ef4444" : undefined }} />
+                    <span className="font-medium text-foreground">{r.name}</span>
+                    <span className="text-muted-foreground">·</span>
                     <span style={{ color: "#3b82f6" }}>{r.email}</span>
-                    <span className="ml-auto text-[9px] capitalize" style={{ color: r.status === "sent" ? "#22c55e" : r.status === "failed" ? "#ef4444" : "var(--text-muted)" }}>{r.status}</span>
+                    <span className={cn("ml-auto text-[9px] capitalize", r.status !== "sent" && r.status !== "failed" && "text-muted-foreground")} style={r.status === "sent" ? { color: "#22c55e" } : r.status === "failed" ? { color: "#ef4444" } : undefined}>{r.status}</span>
                     {r.error && <span className="text-[9px]" style={{ color: "#ef4444" }} title={r.error}>⚠</span>}
                   </div>
                 ))}
               </div>
               {campaignLogs.length > 0 && (
                 <>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Send Log</div>
-                  <div className="rounded-xl p-3 max-h-40 overflow-y-auto space-y-1" style={{ backgroundColor: "var(--bg-input)", fontFamily: "monospace" }}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider mb-2 text-muted-foreground">Send Log</div>
+                  <div className="rounded-xl p-3 max-h-40 overflow-y-auto space-y-1 bg-muted font-mono">
                     {campaignLogs.map((log: string, i: number) => (
-                      <div key={i} className="text-[10px]" style={{ color: log.includes("✓") ? "#22c55e" : log.includes("✗") ? "#ef4444" : "var(--text-secondary)" }}>{log}</div>
+                      <div key={i} className={cn("text-[10px]", !log.includes("✓") && !log.includes("✗") && "text-muted-foreground")} style={log.includes("✓") ? { color: "#22c55e" } : log.includes("✗") ? { color: "#ef4444" } : undefined}>{log}</div>
                     ))}
                   </div>
                 </>
@@ -490,6 +483,7 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
         </div>
       )}
     </div>
+    </HistoryPanel>
   );
 }
 
@@ -497,21 +491,21 @@ export function LeadGen({ leads, setLeads, leadHistory, setLeadHistory, onDelete
 /* ── Search Results Table ── */
 function SearchResultsTable({ results, onAdd, onAddAll, editingEmailId, emailDraft, setEmailDraft, startEditEmail, setSearchResultEmail, setEditingEmailId, expandedSuggestions, toggleSuggestions }: any) {
   return (
-    <div className="rounded-2xl overflow-hidden animate-scale-in" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+    <div className="rounded-2xl overflow-hidden animate-scale-in bg-card border border-border shadow-md">
       <div className="flex items-center justify-between px-5 py-3">
-        <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e" }}><UserPlus size={13} /></span><span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Search Results ({results.length})</span></div>
-        <button onClick={onAddAll} className="text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5" style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}><Plus size={12} /> Add All</button>
+        <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e" }}><UserPlus size={13} /></span><span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search Results ({results.length})</span></div>
+        <Button onClick={onAddAll} variant="ghost" className="text-xs px-3 py-1.5 rounded-lg font-medium h-auto" style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}><Plus size={12} /> Add All</Button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
-          <thead><tr style={{ backgroundColor: "var(--bg-input)" }}>{["Name","Company","Role","Email","LinkedIn",""].map((h) => <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider px-3 py-2" style={{ color: "var(--text-muted)" }}>{h}</th>)}</tr></thead>
+          <thead><tr className="bg-muted">{["Name","Company","Role","Email","LinkedIn",""].map((h) => <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider px-3 py-2 text-muted-foreground">{h}</th>)}</tr></thead>
           <tbody>{results.map((lead: any) => (
-            <tr key={lead.id} className="transition-all duration-150" style={{ borderTop: "1px solid var(--border)" }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
-              <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{lead.name}</td>
-              <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{lead.company}</td>
-              <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{lead.role}</td>
+            <tr key={lead.id} className="transition-all duration-150 border-t border-border hover:bg-muted/50">
+              <td className="px-3 py-2.5 font-medium text-foreground">{lead.name}</td>
+              <td className="px-3 py-2.5 text-muted-foreground">{lead.company}</td>
+              <td className="px-3 py-2.5 text-muted-foreground">{lead.role}</td>
               <td className="px-3 py-2.5"><EmailCell lead={lead} editing={editingEmailId === lead.id} emailDraft={emailDraft} setEmailDraft={setEmailDraft} startEdit={startEditEmail} setEmail={(e: string) => setSearchResultEmail(lead.id, e)} cancelEdit={() => { setEditingEmailId(null); setEmailDraft(""); }} expanded={expandedSuggestions.has(lead.id)} toggleSuggestions={() => toggleSuggestions(lead.id)} /></td>
-              <td className="px-3 py-2.5">{lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6" }}><ExternalLink size={13} /></a> : <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+              <td className="px-3 py-2.5">{lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6" }}><ExternalLink size={13} /></a> : <span className="text-muted-foreground">—</span>}</td>
               <td className="px-3 py-2.5"><button onClick={() => onAdd(lead)} className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition-all" style={{ backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e" }}><Plus size={14} /></button></td>
             </tr>
           ))}</tbody>
@@ -524,35 +518,34 @@ function SearchResultsTable({ results, onAdd, onAddAll, editingEmailId, emailDra
 /* ── My Leads Table ── */
 function MyLeadsTable({ leads, selectedLeads, toggleSelect, selectAll, deleteLead, editingEmailId, emailDraft, setEmailDraft, startEditEmail, setLeadEmail, setEditingEmailId, expandedSuggestions, toggleSuggestions, onCreateCampaign, isAdmin }: any) {
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+    <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-md">
       <div className="flex items-center justify-between px-5 py-3">
-        <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(59,130,246,0.15)", color: "#3b82f6" }}><Table2 size={13} /></span><span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>My Leads ({leads.length})</span></div>
+        <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(59,130,246,0.15)", color: "#3b82f6" }}><Table2 size={13} /></span><span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">My Leads ({leads.length})</span></div>
         <div className="flex items-center gap-2">
-          {leads.length > 0 && <button onClick={selectAll} className="text-[10px] px-2.5 py-1 rounded-lg font-medium" style={{ backgroundColor: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>{selectedLeads.size === leads.length ? "Deselect All" : "Select All"}</button>}
+          {leads.length > 0 && <button onClick={selectAll} className="text-[10px] px-2.5 py-1 rounded-lg font-medium bg-muted text-muted-foreground border border-border">{selectedLeads.size === leads.length ? "Deselect All" : "Select All"}</button>}
           {selectedLeads.size > 0 && <button onClick={onCreateCampaign} className="text-[10px] px-3 py-1 rounded-lg font-medium flex items-center gap-1" style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)", color: "#fff", boxShadow: "0 2px 6px rgba(139,92,246,0.3)" }}><Megaphone size={10} /> Create Campaign ({selectedLeads.size})</button>}
         </div>
       </div>
       {leads.length === 0 ? (
-        <div className="text-center py-12 px-5" style={{ color: "var(--text-muted)" }}><UserPlus size={32} style={{ opacity: 0.2, margin: "0 auto 12px" }} /><p className="text-sm">No leads yet</p><p className="text-xs mt-1">Search for prospects above to build your list</p></div>
+        <div className="text-center py-12 px-5 text-muted-foreground"><UserPlus size={32} style={{ opacity: 0.2, margin: "0 auto 12px" }} /><p className="text-sm">No leads yet</p><p className="text-xs mt-1">Search for prospects above to build your list</p></div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
-            <thead><tr style={{ backgroundColor: "var(--bg-input)" }}>
+            <thead><tr className="bg-muted">
               <th className="px-5 py-2 w-8"><div className="w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer" style={{ borderColor: selectedLeads.size === leads.length ? "var(--accent)" : "var(--border)", backgroundColor: selectedLeads.size === leads.length ? "var(--accent)" : "transparent" }} onClick={selectAll}>{selectedLeads.size === leads.length && <span className="text-white text-[8px] font-bold">✓</span>}</div></th>
-              {["Name","Company","Role","Email","LinkedIn","Added",""].map((h) => <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider px-3 py-2" style={{ color: "var(--text-muted)" }}>{h}</th>)}
+              {["Name","Company","Role","Email","LinkedIn","Added",""].map((h) => <th key={h} className="text-left text-[10px] font-semibold uppercase tracking-wider px-3 py-2 text-muted-foreground">{h}</th>)}
             </tr></thead>
             <tbody>{leads.map((lead: any) => {
               const selected = selectedLeads.has(lead.id);
               return (
-                <tr key={lead.id} className="cursor-pointer transition-all duration-150" onClick={() => toggleSelect(lead.id)} style={{ backgroundColor: selected ? "var(--accent-soft)" : "transparent" }}
-                  onMouseEnter={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "var(--bg-hover)"; }} onMouseLeave={(e) => { if (!selected) e.currentTarget.style.backgroundColor = "transparent"; }}>
+                <tr key={lead.id} className={cn("cursor-pointer transition-all duration-150", selected ? "" : "hover:bg-muted/50")} onClick={() => toggleSelect(lead.id)} style={selected ? { backgroundColor: "var(--accent-soft)" } : undefined}>
                   <td className="px-5 py-2.5"><div className="w-4 h-4 rounded border-2 flex items-center justify-center" style={{ borderColor: selected ? "var(--accent)" : "var(--border)", backgroundColor: selected ? "var(--accent)" : "transparent" }}>{selected && <span className="text-white text-[8px] font-bold">✓</span>}</div></td>
-                  <td className="px-3 py-2.5 font-medium" style={{ color: "var(--text-primary)" }}>{lead.name}</td>
-                  <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{lead.company}</td>
-                  <td className="px-3 py-2.5" style={{ color: "var(--text-secondary)" }}>{lead.role || "—"}</td>
+                  <td className="px-3 py-2.5 font-medium text-foreground">{lead.name}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{lead.company}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{lead.role || "—"}</td>
                   <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}><EmailCell lead={lead} editing={editingEmailId === lead.id} emailDraft={emailDraft} setEmailDraft={setEmailDraft} startEdit={startEditEmail} setEmail={(e: string) => setLeadEmail(lead.id, e)} cancelEdit={() => { setEditingEmailId(null); setEmailDraft(""); }} expanded={expandedSuggestions.has(lead.id)} toggleSuggestions={() => toggleSuggestions(lead.id)} /></td>
-                  <td className="px-3 py-2.5">{lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "#3b82f6" }}><ExternalLink size={13} /></a> : <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
-                  <td className="px-3 py-2.5 text-[10px]" style={{ color: "var(--text-muted)" }}>{new Date(lead.addedAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-2.5">{lead.linkedinUrl ? <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "#3b82f6" }}><ExternalLink size={13} /></a> : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-3 py-2.5 text-[10px] text-muted-foreground">{new Date(lead.addedAt).toLocaleDateString()}</td>
                   <td className="px-3 py-2.5">{isAdmin && <button onClick={(e) => { e.stopPropagation(); deleteLead(lead.id); }} className="w-6 h-6 rounded flex items-center justify-center hover:scale-110 transition-all" style={{ color: "#ef4444" }}><Trash2 size={12} /></button>}</td>
                 </tr>
               );
@@ -569,8 +562,8 @@ function EmailCell({ lead, editing, emailDraft, setEmailDraft, startEdit, setEma
   if (lead.email) return <span className="text-xs px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>{lead.email}</span>;
   if (editing) return (
     <div className="flex items-center gap-1">
-      <input type="email" value={emailDraft} onChange={(e) => setEmailDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && emailDraft.trim()) setEmail(emailDraft.trim()); if (e.key === "Escape") cancelEdit(); }}
-        className="px-2 py-1 rounded-lg text-xs outline-none w-40" style={{ backgroundColor: "var(--bg-input)", border: "1.5px solid var(--accent)", color: "var(--text-primary)" }} autoFocus placeholder="email@company.com" />
+      <Input type="email" value={emailDraft} onChange={(e) => setEmailDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && emailDraft.trim()) setEmail(emailDraft.trim()); if (e.key === "Escape") cancelEdit(); }}
+        className="px-2 py-1 rounded-lg text-xs w-40 h-auto" autoFocus placeholder="email@company.com" />
       <button onClick={() => { if (emailDraft.trim()) setEmail(emailDraft.trim()); }} className="w-5 h-5 rounded flex items-center justify-center" style={{ color: "#22c55e" }}><Check size={12} /></button>
     </div>
   );

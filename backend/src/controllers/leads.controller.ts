@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
 import { runTinyFishAgent, llmExtract, cancelTinyFishRun } from "../services/tinyfish.service";
 import { setLLMConfig } from "../llm/groq.client";
-import { loadConfig } from "../services/store";
+import { loadConfig, appendToStore } from "../services/store";
 
 // In-memory stores
 const leadRunStore = new Map<string, {
@@ -95,10 +95,16 @@ If no profiles found, return: { "leads": [] }`);
     run.logs.push(`Generated ${run.leads.length} sample leads for demo.`);
   } finally {
     run.done = true;
-  }
-}
-
-export function streamLeadLogs(req: Request, res: Response) {
+    // Persist to history
+    appendToStore("leadgenHistory", {
+      id: runId,
+      query,
+      timestamp: new Date().toISOString(),
+      leadsCount: run.leads.length,
+      status: run.leads.length > 0 ? "complete" : "error",
+      logsCount: run.logs.length,
+    });
+  }(req: Request, res: Response) {
   const { runId } = req.params;
 
   const run = leadRunStore.get(runId as string);

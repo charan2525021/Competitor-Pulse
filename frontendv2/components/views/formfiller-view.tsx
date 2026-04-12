@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollReveal } from "@/components/scroll-reveal"
 import { cn } from "@/lib/utils"
+import { LiveLogs } from "@/components/live-logs"
 import {
   Globe,
   Search,
@@ -16,174 +17,189 @@ import {
   FileText,
   Send,
   Edit3,
-  Eye,
   Clock,
   RefreshCw,
   Trash2,
-  Play
+  Play,
+  Square,
+  User,
+  Building2,
+  Mail,
+  Phone,
+  Briefcase,
+  MessageSquare,
+  Newspaper,
+  Handshake,
+  DollarSign,
+  Rocket,
+  Settings,
 } from "lucide-react"
-import type { FormSubmission } from "@/lib/types"
+import { startFormFill, createFormLogStream, cancelFormFill, loadCollection, saveCollection } from "@/lib/api"
 
-interface DetectedField {
-  name: string
-  type: string
-  label: string
-  required: boolean
-  value: string
-}
-
-// Mock submission history
-const mockHistory: FormSubmission[] = [
-  {
-    id: "1",
-    url: "https://acme.com/contact",
-    status: "success",
-    submittedAt: new Date(Date.now() - 3600000),
-    fields: { name: "John Doe", email: "john@company.com", message: "Interest in enterprise plan" },
-  },
-  {
-    id: "2",
-    url: "https://startup.io/demo",
-    status: "success",
-    submittedAt: new Date(Date.now() - 7200000),
-    fields: { company: "TechCorp", role: "CTO", employees: "50-100" },
-  },
-  {
-    id: "3",
-    url: "https://competitor.app/waitlist",
-    status: "failed",
-    submittedAt: new Date(Date.now() - 86400000),
-    fields: { email: "test@test.com" },
-    error: "CAPTCHA detected"
-  },
+const FORM_TYPES = [
+  { id: "demo-request", label: "Demo Request", icon: Play, color: "text-blue-500" },
+  { id: "contact-us", label: "Contact Us", icon: MessageSquare, color: "text-emerald-500" },
+  { id: "newsletter", label: "Newsletter", icon: Newspaper, color: "text-violet-500" },
+  { id: "partnership", label: "Partnership", icon: Handshake, color: "text-amber-500" },
+  { id: "pricing-inquiry", label: "Pricing Inquiry", icon: DollarSign, color: "text-cyan-500" },
+  { id: "job-application", label: "Job Application", icon: Briefcase, color: "text-pink-500" },
+  { id: "free-trial", label: "Free Trial", icon: Rocket, color: "text-orange-500" },
+  { id: "custom", label: "Custom", icon: Settings, color: "text-gray-500" },
 ]
 
+interface Profile {
+  id: string
+  name: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  company: string
+  title: string
+}
+
+interface LogEntry {
+  id: string
+  type: "info" | "success" | "warning" | "error" | "action"
+  message: string
+  timestamp: string
+}
+
+interface FillHistoryItem {
+  id: string
+  company: string
+  formType: string
+  status: "success" | "failed" | "pending"
+  timestamp: string
+  details?: string
+}
+
+const DEFAULT_PROFILE: Profile = {
+  id: "default",
+  name: "Default Profile",
+  firstName: "John",
+  lastName: "Smith",
+  email: "john@company.com",
+  company: "Acme Inc",
+  title: "Product Manager",
+  phone: "+1 555-0100",
+}
+
 export function FormFillerView() {
-  const [url, setUrl] = useState("")
-  const [isDetecting, setIsDetecting] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [detectedFields, setDetectedFields] = useState<DetectedField[]>([])
-  const [history, setHistory] = useState<FormSubmission[]>(mockHistory)
-  const [activeTab, setActiveTab] = useState<"detect" | "history">("detect")
+  const [companyName, setCompanyName] = useState("")
+  const [selectedFormType, setSelectedFormType] = useState("demo-request")
+  const [instructions, setInstructions] = useState("")
+  const [isRunning, setIsRunning] = useState(false)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [runId, setRunId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"fill" | "profiles" | "history">("fill")
+  const [profiles, setProfiles] = useState<Profile[]>([DEFAULT_PROFILE])
+  const [selectedProfile, setSelectedProfile] = useState<string>("default")
+  const [editingProfile, setEditingProfile] = useState<Profile | null>(null)
+  const [history, setHistory] = useState<FillHistoryItem[]>([])
+  const esRef = useRef<EventSource | null>(null)
 
-  const handleDetect = async () => {
-    if (!url) return
-    setIsDetecting(true)
-    
+  useEffect(() => {
+    loadCollection("formProfiles").then((data) => {
+      if (data && data.length > 0) setProfiles(data as Profile[])
+    })
+    loadCollection("fillHistory").then((data) => {
+      if (data && data.length > 0) setHistory(data as FillHistoryItem[])
+    })
+  }, [])
+
+  const handleFill = async () => {
+    if (!companyName) return
+    setIsRunning(true)
+    setLogs([])
+
+    const profile = profiles.find(p => p.id === selectedProfile) || DEFAULT_PROFILE
+
     try {
-      const response = await fetch("/api/forms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "detect", url }),
-      })
-      
-      const data = await response.json()
-      
-      if (data.forms && data.forms.length > 0) {
-        // Use the first detected form's fields
-        const form = data.forms[0]
-        setDetectedFields(form.fields.map((f: { name: string; type: string; placeholder?: string; required: boolean }) => ({
-          name: f.name,
-          type: f.type || "text",
-          label: f.placeholder || f.name,
-          required: f.required,
-          value: "",
-        })))
-      } else {
-        // Fallback to default fields
-        setDetectedFields([
-          { name: "name", type: "text", label: "Full Name", required: true, value: "John Smith" },
-          { name: "email", type: "email", label: "Work Email", required: true, value: "john@company.com" },
-          { name: "company", type: "text", label: "Company", required: true, value: "Acme Inc" },
-          { name: "role", type: "text", label: "Job Title", required: false, value: "Product Manager" },
-          { name: "phone", type: "tel", label: "Phone Number", required: false, value: "" },
-          { name: "message", type: "textarea", label: "Message", required: false, value: "" },
-        ])
+      const res = await startFormFill(companyName, selectedFormType, {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        email: profile.email,
+        phone: profile.phone,
+        company: profile.company,
+        title: profile.title,
+      }, instructions || undefined)
+
+      if (res.runId) {
+        setRunId(res.runId)
+        const es = createFormLogStream(
+          res.runId,
+          (data) => {
+            if (data.type === "log" || data.message) {
+              setLogs(prev => [...prev, {
+                id: `${Date.now()}-${Math.random()}`,
+                type: data.level || data.type || "info",
+                message: data.message || JSON.stringify(data),
+                timestamp: new Date().toLocaleTimeString(),
+              }])
+            }
+          },
+          (result) => {
+            setIsRunning(false)
+            const entry: FillHistoryItem = {
+              id: Date.now().toString(),
+              company: companyName,
+              formType: selectedFormType,
+              status: result ? "success" : "failed",
+              timestamp: new Date().toISOString(),
+              details: result ? JSON.stringify(result) : undefined,
+            }
+            setHistory(prev => {
+              const updated = [entry, ...prev]
+              saveCollection("fillHistory", updated)
+              return updated
+            })
+          }
+        )
+        esRef.current = es
       }
-    } catch (error) {
-      console.error("Form detection error:", error)
-      // Use fallback fields on error
-      setDetectedFields([
-        { name: "name", type: "text", label: "Full Name", required: true, value: "" },
-        { name: "email", type: "email", label: "Email", required: true, value: "" },
-        { name: "message", type: "textarea", label: "Message", required: false, value: "" },
-      ])
+    } catch (err) {
+      setLogs(prev => [...prev, {
+        id: `${Date.now()}`,
+        type: "error",
+        message: `Failed to start: ${err instanceof Error ? err.message : "Unknown error"}`,
+        timestamp: new Date().toLocaleTimeString(),
+      }])
+      setIsRunning(false)
     }
-    
-    setIsDetecting(false)
   }
 
-  const handleFieldChange = (index: number, value: string) => {
-    const newFields = [...detectedFields]
-    newFields[index].value = value
-    setDetectedFields(newFields)
+  const handleCancel = async () => {
+    if (runId) {
+      await cancelFormFill(runId)
+      esRef.current?.close()
+      setIsRunning(false)
+      setLogs(prev => [...prev, {
+        id: `${Date.now()}`,
+        type: "warning",
+        message: "Form fill cancelled by user",
+        timestamp: new Date().toLocaleTimeString(),
+      }])
+    }
   }
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true)
-    
-    const profile = {
-      firstName: detectedFields.find(f => f.name === "name")?.value?.split(" ")[0] || "",
-      lastName: detectedFields.find(f => f.name === "name")?.value?.split(" ").slice(1).join(" ") || "",
-      email: detectedFields.find(f => f.name === "email")?.value || "",
-      company: detectedFields.find(f => f.name === "company")?.value || "",
-      title: detectedFields.find(f => f.name === "role")?.value || "",
-      phone: detectedFields.find(f => f.name === "phone")?.value || "",
-      message: detectedFields.find(f => f.name === "message")?.value || "",
-    }
-    
-    try {
-      const response = await fetch("/api/forms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          formType: "contact",
-          profile,
-        }),
-      })
-      
-      const data = await response.json()
-      
-      const newSubmission: FormSubmission = {
-        id: Date.now().toString(),
-        url,
-        status: data.success ? "success" : "failed",
-        submittedAt: new Date(),
-        fields: detectedFields.reduce((acc, f) => ({ ...acc, [f.name]: f.value }), {}),
-        error: data.error,
-      }
-      
-      setHistory([newSubmission, ...history])
-    } catch (error) {
-      const newSubmission: FormSubmission = {
-        id: Date.now().toString(),
-        url,
-        status: "failed",
-        submittedAt: new Date(),
-        fields: detectedFields.reduce((acc, f) => ({ ...acc, [f.name]: f.value }), {}),
-        error: error instanceof Error ? error.message : "Submission failed",
-      }
-      setHistory([newSubmission, ...history])
-    }
-    
-    setIsSubmitting(false)
-    setDetectedFields([])
-    setUrl("")
+  const saveProfile = (profile: Profile) => {
+    const updated = profiles.some(p => p.id === profile.id)
+      ? profiles.map(p => p.id === profile.id ? profile : p)
+      : [...profiles, { ...profile, id: Date.now().toString() }]
+    setProfiles(updated)
+    saveCollection("formProfiles", updated)
+    setEditingProfile(null)
   }
 
-  const getStatusIcon = (status: FormSubmission["status"]) => {
-    switch (status) {
-      case "success":
-        return <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-      case "failed":
-        return <AlertCircle className="h-4 w-4 text-rose-500" />
-      case "pending":
-        return <Clock className="h-4 w-4 text-amber-500" />
-      default:
-        return null
-    }
+  const deleteProfile = (id: string) => {
+    if (id === "default") return
+    const updated = profiles.filter(p => p.id !== id)
+    setProfiles(updated)
+    saveCollection("formProfiles", updated)
+    if (selectedProfile === id) setSelectedProfile("default")
   }
+
 
   return (
     <div className="space-y-6">
@@ -191,205 +207,204 @@ export function FormFillerView() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Form Filler</h1>
-          <p className="text-muted-foreground">Automatically detect and fill web forms</p>
+          <p className="text-muted-foreground">AI-powered autonomous form filling</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant={activeTab === "detect" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("detect")}
-          >
-            <Edit3 className="mr-2 h-4 w-4" />
-            New Form
+          <Button variant={activeTab === "fill" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("fill")}>
+            <Edit3 className="mr-2 h-4 w-4" /> Fill Form
           </Button>
-          <Button
-            variant={activeTab === "history" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("history")}
-          >
-            <Clock className="mr-2 h-4 w-4" />
-            History
+          <Button variant={activeTab === "profiles" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("profiles")}>
+            <User className="mr-2 h-4 w-4" /> Profiles
+          </Button>
+          <Button variant={activeTab === "history" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("history")}>
+            <Clock className="mr-2 h-4 w-4" /> History
           </Button>
         </div>
       </div>
 
-      {activeTab === "detect" ? (
+      {activeTab === "fill" && (
         <>
-          {/* URL Input */}
-          <ScrollReveal delay={100}>
+          {/* Form Type Selection */}
+          <ScrollReveal delay={50}>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex gap-3">
-                  <div className="flex-1 relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Enter form URL (e.g., https://company.com/contact)"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      className="pl-10"
-                      onKeyDown={(e) => e.key === "Enter" && handleDetect()}
-                    />
-                  </div>
-                  <Button onClick={handleDetect} disabled={!url || isDetecting}>
-                    {isDetecting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="mr-2 h-4 w-4" />
-                    )}
-                    Detect Form
-                  </Button>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Select Form Type</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {FORM_TYPES.map((ft) => (
+                    <button
+                      key={ft.id}
+                      onClick={() => setSelectedFormType(ft.id)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all",
+                        selectedFormType === ft.id
+                          ? "bg-primary/10 border-primary/40 text-primary"
+                          : "bg-card border-border hover:border-primary/30"
+                      )}
+                    >
+                      <ft.icon className={cn("h-4 w-4", selectedFormType === ft.id ? "text-primary" : ft.color)} />
+                      {ft.label}
+                    </button>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </ScrollReveal>
 
-          {/* Detected Fields */}
-          {detectedFields.length > 0 && (
-            <ScrollReveal delay={200}>
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
-                      Detected Form Fields
-                    </CardTitle>
-                    <Badge variant="secondary">
-                      {detectedFields.length} fields found
-                    </Badge>
+          {/* Company Input & Profile */}
+          <ScrollReveal delay={100}>
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1 relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Company name (e.g., Salesforce, HubSpot)"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="pl-10"
+                      disabled={isRunning}
+                      onKeyDown={(e) => e.key === "Enter" && !isRunning && handleFill()}
+                    />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {detectedFields.map((field, index) => (
-                      <div key={field.name} className="flex items-start gap-4">
-                        <div className="w-40 flex-shrink-0">
-                          <label className="text-sm font-medium flex items-center gap-2">
-                            {field.label}
-                            {field.required && (
-                              <span className="text-rose-500">*</span>
-                            )}
-                          </label>
-                          <span className="text-xs text-muted-foreground">{field.type}</span>
-                        </div>
-                        <div className="flex-1">
-                          {field.type === "textarea" ? (
-                            <textarea
-                              value={field.value}
-                              onChange={(e) => handleFieldChange(index, e.target.value)}
-                              className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm"
-                              placeholder={`Enter ${field.label.toLowerCase()}...`}
-                            />
-                          ) : (
-                            <Input
-                              type={field.type}
-                              value={field.value}
-                              onChange={(e) => handleFieldChange(index, e.target.value)}
-                              placeholder={`Enter ${field.label.toLowerCase()}...`}
-                            />
-                          )}
-                        </div>
-                      </div>
+                  <select
+                    value={selectedProfile}
+                    onChange={(e) => setSelectedProfile(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={isRunning}
+                  >
+                    {profiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
+                  </select>
+                </div>
+                <Input
+                  placeholder="Special instructions (optional)"
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  disabled={isRunning}
+                />
+                <div className="flex justify-end gap-2">
+                  {isRunning ? (
+                    <Button variant="destructive" onClick={handleCancel}>
+                      <Square className="mr-2 h-4 w-4" /> Stop
+                    </Button>
+                  ) : (
+                    <Button onClick={handleFill} disabled={!companyName}>
+                      <Play className="mr-2 h-4 w-4" /> Start Fill
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <Button variant="outline" onClick={() => setDetectedFields([])}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Clear
-                      </Button>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline">
-                          <Eye className="mr-2 h-4 w-4" />
-                          Preview
-                        </Button>
-                        <Button onClick={handleSubmit} disabled={isSubmitting}>
-                          {isSubmitting ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                          )}
-                          Submit Form
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </ScrollReveal>
-          )}
-
-          {/* Empty State */}
-          {detectedFields.length === 0 && !isDetecting && (
-            <ScrollReveal delay={200}>
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <h3 className="font-semibold mb-2">No Form Detected</h3>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    Enter a URL above to automatically detect form fields. The AI agent will 
-                    analyze the page and extract all fillable fields.
-                  </p>
-                </CardContent>
-              </Card>
+          {/* Live Logs */}
+          {(isRunning || logs.length > 0) && (
+            <ScrollReveal delay={150}>
+              <LiveLogs
+                logs={logs}
+                isRunning={isRunning}
+                title="form-filler"
+                maxHeight="300px"
+              />
             </ScrollReveal>
           )}
         </>
-      ) : (
-        /* History Tab */
+      )}
+
+      {activeTab === "profiles" && (
         <ScrollReveal delay={100}>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Submission History</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Form Profiles</CardTitle>
+                <Button size="sm" onClick={() => setEditingProfile({
+                  id: "", name: "New Profile", firstName: "", lastName: "", email: "", phone: "", company: "", title: ""
+                })}>
+                  <User className="mr-2 h-4 w-4" /> Add Profile
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {history.map((submission) => (
-                  <div
-                    key={submission.id}
-                    className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                  >
-                    {getStatusIcon(submission.status)}
-                    
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{submission.url}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">
-                          {submission.submittedAt.toLocaleString()}
-                        </span>
-                        <span className="text-xs text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground">
-                          {Object.keys(submission.fields).length} fields
-                        </span>
-                        {submission.error && (
-                          <>
-                            <span className="text-xs text-muted-foreground">•</span>
-                            <span className="text-xs text-rose-500">{submission.error}</span>
-                          </>
-                        )}
-                      </div>
+              {editingProfile && (
+                <div className="mb-6 p-4 rounded-lg border bg-muted/30 space-y-3">
+                  <Input placeholder="Profile Name" value={editingProfile.name} onChange={e => setEditingProfile({...editingProfile, name: e.target.value})} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input placeholder="First Name" value={editingProfile.firstName} onChange={e => setEditingProfile({...editingProfile, firstName: e.target.value})} />
+                    <Input placeholder="Last Name" value={editingProfile.lastName} onChange={e => setEditingProfile({...editingProfile, lastName: e.target.value})} />
+                    <Input placeholder="Email" value={editingProfile.email} onChange={e => setEditingProfile({...editingProfile, email: e.target.value})} />
+                    <Input placeholder="Phone" value={editingProfile.phone} onChange={e => setEditingProfile({...editingProfile, phone: e.target.value})} />
+                    <Input placeholder="Company" value={editingProfile.company} onChange={e => setEditingProfile({...editingProfile, company: e.target.value})} />
+                    <Input placeholder="Job Title" value={editingProfile.title} onChange={e => setEditingProfile({...editingProfile, title: e.target.value})} />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditingProfile(null)}>Cancel</Button>
+                    <Button size="sm" onClick={() => saveProfile(editingProfile)}>Save Profile</Button>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                {profiles.map((profile) => (
+                  <div key={profile.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                    <div>
+                      <p className="font-medium">{profile.name}</p>
+                      <p className="text-sm text-muted-foreground">{profile.firstName} {profile.lastName} &middot; {profile.email} &middot; {profile.company}</p>
                     </div>
-
-                    <Badge 
-                      variant="outline" 
-                      className={cn(
-                        submission.status === "success" && "text-emerald-500 border-emerald-500/30",
-                        submission.status === "failed" && "text-rose-500 border-rose-500/30",
-                        submission.status === "pending" && "text-amber-500 border-amber-500/30"
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setEditingProfile({...profile})}>
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      {profile.id !== "default" && (
+                        <Button variant="ghost" size="sm" onClick={() => deleteProfile(profile.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
-                    >
-                      {submission.status}
-                    </Badge>
-
-                    <Button variant="ghost" size="sm">
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
+                    </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+      )}
 
-                {history.length === 0 && (
+      {activeTab === "history" && (
+        <ScrollReveal delay={100}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Fill History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {history.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No submissions yet</p>
+                    <p>No form fills yet</p>
                   </div>
+                ) : (
+                  history.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 p-4 rounded-lg border bg-card">
+                      {item.status === "success" ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-rose-500" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium">{item.company}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {FORM_TYPES.find(f => f.id === item.formType)?.label || item.formType} &middot; {new Date(item.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={cn(
+                        item.status === "success" && "text-emerald-500 border-emerald-500/30",
+                        item.status === "failed" && "text-rose-500 border-rose-500/30",
+                      )}>
+                        {item.status}
+                      </Badge>
+                    </div>
+                  ))
                 )}
               </div>
             </CardContent>

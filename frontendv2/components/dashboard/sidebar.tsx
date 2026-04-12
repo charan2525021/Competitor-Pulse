@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useAuth } from "@/contexts/auth-context"
 import { 
   LayoutDashboard, 
   Target, 
@@ -13,7 +14,8 @@ import {
   Database,
   Settings,
   Book,
-  Home
+  Home,
+  LogOut
 } from "lucide-react"
 import type { NavItem } from "@/lib/types"
 
@@ -36,6 +38,8 @@ const navItems: { id: NavItem; label: string; icon: typeof LayoutDashboard; sect
 ]
 
 export function Sidebar({ activeItem, onItemClick }: SidebarProps) {
+  const { user, logout } = useAuth()
+
   return (
     <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col h-full">
       {/* Logo */}
@@ -80,19 +84,28 @@ export function Sidebar({ activeItem, onItemClick }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border space-y-2">
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-              <span className="text-xs font-medium text-muted-foreground">AM</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {user?.username?.slice(0, 2).toUpperCase() || "U"}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">Alex Morgan</p>
-              <p className="text-xs text-muted-foreground truncate">Pro Plan</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.username || "User"}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.role === "admin" ? "Admin" : "Pro Plan"}</p>
             </div>
           </div>
           <ThemeToggle />
         </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
       </div>
     </aside>
   )

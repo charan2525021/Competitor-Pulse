@@ -2,6 +2,10 @@ import { useState } from "react";
 import type { IntelRecord } from "../components/IntelDataPanel";
 import { AIParticles } from "../components/FishAnimation";
 import { ScrollReveal } from "../components/ScrollReveal";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DollarSign, Briefcase, Star, FileText, Cpu, Share2,
   Trash2, ExternalLink, ChevronDown, Database, Building2,
@@ -44,18 +48,18 @@ export function IntelPage({ records, onDelete, isAdmin }: IntelPageProps) {
   }
 
   return (
-    <div className="flex flex-col page-enter" style={{ height: "calc(100vh - 57px)", position: "relative" }}>
+    <div className="flex flex-col page-enter h-[calc(100vh-57px)] relative">
       <AIParticles count={6} />
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: "var(--border)" }}>
+      <div className="px-6 pt-6 pb-4 border-b border-border">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)", color: "#fff" }}>
             <Database size={20} />
           </div>
           <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Intel Database</h1>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+            <h1 className="text-xl font-bold text-foreground">Intel Database</h1>
+            <p className="text-xs text-muted-foreground">
               {records.length} records across {new Set(records.map((r) => r.company)).size} companies
             </p>
           </div>
@@ -66,12 +70,7 @@ export function IntelPage({ records, onDelete, isAdmin }: IntelPageProps) {
               placeholder="Search companies..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="text-sm px-4 py-2 rounded-xl outline-none transition-all duration-200 w-64"
-              style={{
-                backgroundColor: "var(--bg-input)",
-                border: "1.5px solid var(--border)",
-                color: "var(--text-primary)",
-              }}
+              className="text-sm px-4 py-2 rounded-xl outline-none transition-all duration-200 w-64 bg-muted border border-border text-foreground"
               onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
               onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
             />
@@ -114,7 +113,7 @@ export function IntelPage({ records, onDelete, isAdmin }: IntelPageProps) {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: "var(--text-muted)" }}>
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
             <Database size={48} style={{ opacity: 0.15 }} />
             <p className="text-sm font-medium">No intel data yet</p>
             <p className="text-xs">Run a competitive scan from the Agent tab to start collecting data</p>
@@ -138,7 +137,7 @@ function CompanyGroup({ company, records, onDelete, isAdmin }: { company: string
   const latestDate = records.reduce((latest, r) => r.scanDate > latest ? r.scanDate : latest, records[0].scanDate);
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "var(--bg-card)", border: "1.5px solid var(--border)", boxShadow: "var(--shadow-md)" }}>
+    <div className="rounded-2xl overflow-hidden bg-card border border-border shadow-md">
       {/* Company header */}
       <div
         className="flex items-center gap-3 px-5 py-4 cursor-pointer transition-colors duration-200"
@@ -151,10 +150,10 @@ function CompanyGroup({ company, records, onDelete, isAdmin }: { company: string
           <Building2 size={18} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{company}</h3>
+          <h3 className="text-base font-bold text-foreground">{company}</h3>
           <div className="flex items-center gap-2 mt-0.5">
-            <Calendar size={10} style={{ color: "var(--text-muted)" }} />
-            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+            <Calendar size={10} className="text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground">
               Last scan: {new Date(latestDate).toLocaleDateString()}
             </span>
           </div>
@@ -170,8 +169,7 @@ function CompanyGroup({ company, records, onDelete, isAdmin }: { company: string
             ) : null;
           })}
         </div>
-        <ChevronDown size={16} style={{
-          color: "var(--text-muted)",
+        <ChevronDown size={16} className="text-muted-foreground" style={{
           transform: collapsed ? "rotate(-90deg)" : "rotate(0)",
           transition: "transform 0.3s ease",
         }} />
@@ -194,12 +192,12 @@ function FullRecordCard({ record, onDelete, isAdmin }: { record: IntelRecord; on
   const color = tab?.color || "#3b82f6";
 
   return (
-    <div className="rounded-xl p-4" style={{ backgroundColor: "var(--bg-input)", border: "1px solid var(--border)" }}>
+    <div className="rounded-xl p-4 bg-muted border border-border">
       <div className="flex items-center gap-2 mb-3">
         <span className="w-7 h-7 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: `${color}15`, color }}>{tab?.icon}</span>
         <span className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{tab?.label}</span>
-        <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
+        <div className="flex-1 h-px bg-border" />
         {isAdmin && (
           <button onClick={() => onDelete(record.id)}
             className="w-6 h-6 rounded flex items-center justify-center transition-all duration-200 hover:scale-110"
@@ -222,12 +220,12 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {plans.map((p: any, i: number) => (
-            <div key={i} className="rounded-xl p-4" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-              <div className="text-sm font-bold mb-1" style={{ color: "var(--text-primary)" }}>{p.name || p.tier || `Plan ${i + 1}`}</div>
+            <div key={i} className="rounded-xl p-4 bg-card border border-border">
+              <div className="text-sm font-bold mb-1 text-foreground">{p.name || p.tier || `Plan ${i + 1}`}</div>
               <div className="text-xl font-extrabold mb-1" style={{ color: "#22c55e" }}>{p.price || p.cost || "N/A"}</div>
-              {p.period && <div className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>{p.period}</div>}
+              {p.period && <div className="text-[11px] mb-2 text-muted-foreground">{p.period}</div>}
               {p.features?.map((f: string, j: number) => (
-                <div key={j} className="text-xs mt-1 flex items-start gap-1.5" style={{ color: "var(--text-secondary)" }}>
+                <div key={j} className="text-xs mt-1 flex items-start gap-1.5 text-muted-foreground">
                   <span style={{ color: "#22c55e", marginTop: 2 }}>✓</span>
                   <span>{f}</span>
                 </div>
@@ -247,15 +245,14 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
     return (
       <div className="space-y-2">
         {jobs.map((j: any, i: number) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
-            style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-            <span className="flex-1 font-medium" style={{ color: "var(--text-primary)" }}>{j.title || j.role || j.position || JSON.stringify(j)}</span>
+          <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm bg-card border border-border">
+            <span className="flex-1 font-medium text-foreground">{j.title || j.role || j.position || JSON.stringify(j)}</span>
             {j.department && (
               <span className="text-[11px] px-2 py-0.5 rounded-lg font-medium"
                 style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>{j.department}</span>
             )}
             {(j.location || j.loc) && (
-              <span className="text-[11px] flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+              <span className="text-[11px] flex items-center gap-1 text-muted-foreground">
                 <MapPin size={10} /> {j.location || j.loc}
               </span>
             )}
@@ -266,7 +263,7 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
             )}
           </div>
         ))}
-        {jobs.length === 0 && <p className="text-xs" style={{ color: "var(--text-muted)" }}>No job data</p>}
+        {jobs.length === 0 && <p className="text-xs text-muted-foreground">No job data</p>}
       </div>
     );
   }
@@ -276,7 +273,7 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
     return (
       <div className="space-y-3">
         {(data?.rating || data?.averageRating) && (
-          <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--bg-card)" }}>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-card">
             <span className="text-3xl font-extrabold" style={{ color: "#f59e0b" }}>{data.rating || data.averageRating}</span>
             <div>
               <div className="flex gap-0.5">
@@ -285,22 +282,22 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
                     style={{ color: s <= Math.round(data.rating || data.averageRating) ? "#f59e0b" : "var(--text-muted)" }} />
                 ))}
               </div>
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              <span className="text-xs text-muted-foreground">
                 {data.totalReviews || data.reviewCount || "?"} reviews · {data.platform || "G2"}
               </span>
             </div>
           </div>
         )}
         {reviews.map((r: any, i: number) => (
-          <div key={i} className="px-4 py-3 rounded-xl" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div key={i} className="px-4 py-3 rounded-xl bg-card border border-border">
             <div className="flex items-center gap-2 mb-1">
               {r.rating && (
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
                   style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>★ {r.rating}/5</span>
               )}
-              <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>{r.title || "Review"}</span>
+              <span className="font-semibold text-sm text-foreground">{r.title || "Review"}</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{r.summary || r.text || r.content}</p>
+            <p className="text-xs text-muted-foreground">{r.summary || r.text || r.content}</p>
           </div>
         ))}
       </div>
@@ -312,12 +309,11 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
     return (
       <div className="space-y-2">
         {posts.map((p: any, i: number) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl"
-            style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card border border-border">
             <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "#8b5cf6" }} />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.title || p.headline || (typeof p === "string" ? p : JSON.stringify(p))}</div>
-              {p.summary && <div className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>{p.summary}</div>}
+              <div className="text-sm font-medium text-foreground">{p.title || p.headline || (typeof p === "string" ? p : JSON.stringify(p))}</div>
+              {p.summary && <div className="text-xs mt-0.5 text-muted-foreground">{p.summary}</div>}
             </div>
             {p.date && <span className="text-[11px] px-2 py-0.5 rounded-md shrink-0" style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>{p.date}</span>}
             {p.url && (
@@ -352,13 +348,12 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {profiles.map((p: any, i: number) => (
             <a key={i} href={p.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all duration-200 hover:scale-[1.02]"
-              style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+              className="flex items-center gap-3 px-4 py-3 rounded-xl no-underline transition-all duration-200 hover:scale-[1.02] bg-card border border-border">
               <Share2 size={14} style={{ color: "#ec4899" }} />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{p.platform || "Social"}</div>
+                <div className="text-sm font-medium text-foreground">{p.platform || "Social"}</div>
                 {(p.handle || p.followers || p.subscribers) && (
-                  <div className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  <div className="text-[11px] text-muted-foreground">
                     {p.handle}{p.handle && (p.followers || p.subscribers) ? " · " : ""}
                     {p.followers ? `${p.followers} followers` : ""}{p.subscribers ? `${p.subscribers} subs` : ""}
                   </div>
@@ -380,12 +375,11 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
     return (
       <div className="space-y-2">
         {leads.map((l: any, i: number) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
-            style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+          <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm bg-card border border-border">
             <Users size={14} style={{ color: "#f59e0b", flexShrink: 0 }} />
             <div className="flex-1 min-w-0">
-              <div className="font-medium" style={{ color: "var(--text-primary)" }}>{l.name || "Unknown"}</div>
-              <div className="text-[11px] flex items-center gap-2 mt-0.5" style={{ color: "var(--text-muted)" }}>
+              <div className="font-medium text-foreground">{l.name || "Unknown"}</div>
+              <div className="text-[11px] flex items-center gap-2 mt-0.5 text-muted-foreground">
                 {l.role && <span>{l.role}</span>}
                 {l.role && l.company && <span>·</span>}
                 {l.company && <span>{l.company}</span>}
@@ -402,7 +396,7 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
             )}
           </div>
         ))}
-        {leads.length === 0 && <p className="text-xs" style={{ color: "var(--text-muted)" }}>No lead data</p>}
+        {leads.length === 0 && <p className="text-xs text-muted-foreground">No lead data</p>}
       </div>
     );
   }
@@ -414,12 +408,11 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
         {fills.map((f: any, i: number) => {
           const statusColor = f.status === "success" ? "#22c55e" : f.status === "failed" ? "#ef4444" : "#eab308";
           return (
-            <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
-              style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
+            <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm bg-card border border-border">
               <Mail size={14} style={{ color: "#6366f1", flexShrink: 0 }} />
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{f.url || "Unknown URL"}</div>
-                <div className="text-[11px] flex items-center gap-2 mt-0.5" style={{ color: "var(--text-muted)" }}>
+                <div className="font-medium truncate text-foreground">{f.url || "Unknown URL"}</div>
+                <div className="text-[11px] flex items-center gap-2 mt-0.5 text-muted-foreground">
                   {f.formType && <span className="capitalize">{f.formType.replace(/-/g, " ")}</span>}
                   {f.profileName && <><span>·</span><span>{f.profileName}</span></>}
                   {f.timestamp && <><span>·</span><span>{new Date(f.timestamp).toLocaleDateString()}</span></>}
@@ -437,28 +430,28 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
   if (type === "strategy") {
     return (
       <div className="space-y-3">
-        {data.title && <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{data.title}</div>}
-        {data.summary && <div className="text-xs" style={{ color: "var(--text-secondary)" }}>{data.summary}</div>}
+        {data.title && <div className="text-sm font-bold text-foreground">{data.title}</div>}
+        {data.summary && <div className="text-xs text-muted-foreground">{data.summary}</div>}
         {data.tam && (
           <div className="grid grid-cols-3 gap-2">
             {[{ label: "TAM", ...data.tam }, { label: "SAM", ...data.sam }, { label: "SOM", ...data.som }].filter(m => m.value).map((m) => (
-              <div key={m.label} className="rounded-lg p-3" style={{ backgroundColor: "var(--bg-card)", border: "1px solid var(--border)" }}>
-                <div className="text-[9px] font-bold uppercase" style={{ color: "var(--text-muted)" }}>{m.label}</div>
+              <div key={m.label} className="rounded-lg p-3 bg-card border border-border">
+                <div className="text-[9px] font-bold uppercase text-muted-foreground">{m.label}</div>
                 <div className="text-base font-bold" style={{ color: "#22c55e" }}>{m.value}</div>
               </div>
             ))}
           </div>
         )}
         {data.trends && <div className="space-y-1">{data.trends.slice(0, 3).map((t: any, i: number) => (
-          <div key={i} className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "var(--bg-card)" }}>
-            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{t.trend}</span>
+          <div key={i} className="text-xs px-3 py-2 rounded-lg bg-card">
+            <span className="font-medium text-foreground">{t.trend}</span>
             {t.impact && <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded" style={{ backgroundColor: t.impact === "High" ? "rgba(239,68,68,0.1)" : "rgba(59,130,246,0.1)", color: t.impact === "High" ? "#ef4444" : "#3b82f6" }}>{t.impact}</span>}
           </div>
         ))}</div>}
         {data.competitors && <div className="space-y-1">{data.competitors.slice(0, 3).map((c: any, i: number) => (
-          <div key={i} className="text-xs px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "var(--bg-card)" }}>
+          <div key={i} className="text-xs px-3 py-2 rounded-lg flex items-center gap-2 bg-card">
             <Target size={10} style={{ color: "#ef4444" }} />
-            <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.name}</span>
+            <span className="font-medium text-foreground">{c.name}</span>
           </div>
         ))}</div>}
         {data.channels && <div className="flex flex-wrap gap-1">{data.channels.slice(0, 5).map((c: any, i: number) => (
@@ -469,8 +462,7 @@ function FullRecordDetail({ record }: { record: IntelRecord }) {
   }
 
   return (
-    <pre className="text-xs overflow-auto max-h-48 p-3 rounded-xl"
-      style={{ backgroundColor: "var(--bg-card)", color: "var(--text-secondary)" }}>
+    <pre className="text-xs overflow-auto max-h-48 p-3 rounded-xl bg-card text-muted-foreground">
       {JSON.stringify(data, null, 2)}
     </pre>
   );
@@ -481,9 +473,8 @@ function KeyValueGrid({ data, color }: { data: Record<string, any>; color: strin
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {entries.map(([k, v]) => (
-        <div key={k} className="flex items-center justify-between px-3 py-2 rounded-lg"
-          style={{ backgroundColor: "var(--bg-card)" }}>
-          <span className="text-xs capitalize" style={{ color: "var(--text-muted)" }}>{k.replace(/_/g, " ")}</span>
+        <div key={k} className="flex items-center justify-between px-3 py-2 rounded-lg bg-card">
+          <span className="text-xs capitalize text-muted-foreground">{k.replace(/_/g, " ")}</span>
           <span className="text-xs font-medium" style={{ color }}>{typeof v === "string" ? v : JSON.stringify(v)}</span>
         </div>
       ))}

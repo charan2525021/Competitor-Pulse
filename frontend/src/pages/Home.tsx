@@ -10,6 +10,8 @@ import { AIParticles } from "../components/FishAnimation";
 import {
   PanelRightClose, PanelRightOpen, Clock, Cpu, Radar, StopCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface HomeProps {
   runId: string | null;
@@ -86,37 +88,49 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
   return (
     <div className="flex h-full">
       {/* ── Main Content ── */}
-      <main className="flex-1 flex flex-col p-6 gap-4 overflow-y-auto page-enter min-w-0" style={{ position: "relative" }}>
+      <main className="relative flex-1 flex flex-col p-6 gap-4 overflow-y-auto page-enter min-w-0">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", color: "#fff" }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white"
+            style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
             <Radar size={20} />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Agent</h1>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>Autonomous competitive intelligence</p>
+            <h1 className="text-xl font-bold text-foreground">Agent</h1>
+            <p className="text-xs text-muted-foreground">Autonomous competitive intelligence</p>
           </div>
           <div className="ml-auto flex items-center gap-2 shrink-0">
             {isRunning && runId && (
-              <button onClick={async () => { try { await cancelAgent(runId); } catch {} }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:scale-105"
+              <Button onClick={async () => { try { await cancelAgent(runId); } catch {} }}
+                className="flex items-center gap-1.5 rounded-full text-xs font-medium hover:scale-105"
+                size="sm"
                 style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "#fff", boxShadow: "0 2px 8px rgba(239,68,68,0.3)" }}>
                 <StopCircle size={14} /> Stop
-              </button>
+              </Button>
             )}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: isRunning ? "rgba(234,179,8,0.15)" : runId ? "rgba(34,197,94,0.15)" : "var(--bg-input)", color: isRunning ? "#eab308" : runId ? "#22c55e" : "var(--text-muted)" }}>
-              <span className={`w-2 h-2 rounded-full ${isRunning ? "animate-pulse-dot" : ""}`}
-                style={{ backgroundColor: isRunning ? "#eab308" : runId ? "#22c55e" : "var(--text-muted)" }} />
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
+              !isRunning && !runId && "bg-muted text-muted-foreground"
+            )}
+              style={isRunning ? { backgroundColor: "rgba(234,179,8,0.15)", color: "#eab308" } : runId ? { backgroundColor: "rgba(34,197,94,0.15)", color: "#22c55e" } : undefined}>
+              <span className={cn(
+                  "w-2 h-2 rounded-full",
+                  isRunning && "animate-pulse-dot",
+                  !isRunning && !runId && "bg-muted-foreground"
+                )}
+                style={isRunning ? { backgroundColor: "#eab308" } : runId ? { backgroundColor: "#22c55e" } : undefined} />
               {isRunning ? "Scanning" : runId ? "Complete" : "Idle"}
             </div>
             {/* Right panel toggle */}
-            <button onClick={() => setRightOpen(!rightOpen)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
-              style={{ backgroundColor: rightOpen ? "var(--accent-soft)" : "var(--bg-input)", color: rightOpen ? "var(--accent)" : "var(--text-secondary)", border: `1px solid ${rightOpen ? "var(--accent)" : "var(--border)"}` }}>
+            <Button onClick={() => setRightOpen(!rightOpen)}
+              variant="outline"
+              size="icon"
+              className={cn(
+                "rounded-xl transition-all hover:scale-110",
+                rightOpen ? "bg-primary/10 text-primary border-primary" : "bg-muted text-muted-foreground border-border"
+              )}>
               {rightOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -125,7 +139,7 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
 
         {/* Toggle logs/reports */}
         {reports.length > 0 && !isRunning && (
-          <div className="flex gap-2 p-1 rounded-xl self-start" style={{ backgroundColor: "var(--bg-input)" }}>
+          <div className="flex gap-2 p-1 rounded-xl self-start bg-muted">
             <TabBtn active={!showReports} onClick={() => setShowReports(false)} color="#6366f1">Live Logs</TabBtn>
             <TabBtn active={showReports} onClick={() => setShowReports(true)} color="#8b5cf6">Intel Reports ({reports.length})</TabBtn>
           </div>
@@ -139,9 +153,9 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
         ) : logs.length > 0 || isRunning ? (
           <LiveLogs logs={logs} isRunning={isRunning} />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-2" style={{ position: "relative" }}>
+          <div className="relative flex-1 flex flex-col items-center justify-center gap-2">
             <AIParticles count={10} />
-            <p className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
+            <p className="text-sm font-medium text-muted-foreground">
               Enter a query to start your competitive intelligence scan
             </p>
           </div>
@@ -150,24 +164,21 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
 
       {/* ── Right Panel (History + Config) ── */}
       {rightOpen && (
-        <aside className="w-80 shrink-0 border-l flex flex-col animate-slide-right"
-          style={{ backgroundColor: "var(--bg-sidebar)", borderColor: "var(--border)" }}>
+        <aside className="w-80 shrink-0 border-l border-border flex flex-col animate-slide-right bg-sidebar">
           {/* Tabs */}
-          <div className="flex gap-1 p-2 shrink-0" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div className="flex gap-1 p-2 shrink-0 border-b border-border">
             <button onClick={() => setRightTab("history")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all"
-              style={{
-                backgroundColor: rightTab === "history" ? "var(--accent-soft)" : "transparent",
-                color: rightTab === "history" ? "var(--accent)" : "var(--text-muted)",
-              }}>
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
+                rightTab === "history" ? "bg-primary/10 text-primary" : "text-muted-foreground"
+              )}>
               <Clock size={13} /> History
             </button>
             <button onClick={() => setRightTab("config")}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all"
-              style={{
-                backgroundColor: rightTab === "config" ? "var(--accent-soft)" : "transparent",
-                color: rightTab === "config" ? "var(--accent)" : "var(--text-muted)",
-              }}>
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all",
+                rightTab === "config" ? "bg-primary/10 text-primary" : "text-muted-foreground"
+              )}>
               <Cpu size={13} /> Config
             </button>
           </div>
@@ -190,10 +201,13 @@ export function Home({ runId, setRunId, history, setHistory, filters, setFilters
 
 function TabBtn({ active, onClick, color, children }: { active: boolean; onClick: () => void; color: string; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className="text-xs px-4 py-1.5 rounded-lg font-medium transition-all"
+    <button onClick={onClick} className={cn(
+      "text-xs px-4 py-1.5 rounded-lg font-medium transition-all",
+      !active && "text-muted-foreground"
+    )}
       style={{
         background: active ? `linear-gradient(135deg, ${color}, ${color}dd)` : "transparent",
-        color: active ? "#fff" : "var(--text-secondary)",
+        color: active ? "#fff" : undefined,
         boxShadow: active ? `0 2px 8px ${color}30` : "none",
       }}>
       {children}

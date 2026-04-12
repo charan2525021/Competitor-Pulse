@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Send, Globe, Loader2, Sparkles } from "lucide-react"
+import { Send, Search, Loader2, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface ChatInputProps {
-  onSubmit: (url: string) => void
+  onSubmit: (query: string) => void
   isLoading?: boolean
   placeholder?: string
   className?: string
@@ -15,26 +15,17 @@ interface ChatInputProps {
 export function ChatInput({ 
   onSubmit, 
   isLoading = false, 
-  placeholder = "Enter competitor URL to analyze...",
+  placeholder = "Enter company name or URL (e.g., Slack, stripe.com)",
   className 
 }: ChatInputProps) {
-  const [url, setUrl] = useState("")
+  const [query, setQuery] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (url.trim() && !isLoading) {
-      onSubmit(url.trim())
-    }
-  }
-
-  const isValidUrl = (input: string) => {
-    try {
-      new URL(input.startsWith("http") ? input : `https://${input}`)
-      return true
-    } catch {
-      return input.length > 0
+    if (query.trim() && !isLoading) {
+      onSubmit(query.trim())
     }
   }
 
@@ -53,9 +44,9 @@ export function ChatInput({
             : "border-border hover:border-primary/30"
         )}
       >
-        {/* URL Icon */}
+        {/* Search Icon */}
         <div className="flex items-center justify-center pl-3">
-          <Globe className={cn(
+          <Search className={cn(
             "h-5 w-5 transition-colors duration-200",
             isFocused ? "text-primary" : "text-muted-foreground"
           )} />
@@ -65,8 +56,8 @@ export function ChatInput({
         <input
           ref={inputRef}
           type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
@@ -78,7 +69,7 @@ export function ChatInput({
         />
 
         {/* AI Badge */}
-        {url.length > 0 && isValidUrl(url) && (
+        {query.trim().length > 0 && (
           <div className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 sm:flex">
             <Sparkles className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs font-medium text-primary">AI Analysis</span>
@@ -89,7 +80,7 @@ export function ChatInput({
         <Button
           type="submit"
           size="lg"
-          disabled={!url.trim() || isLoading}
+          disabled={!query.trim() || isLoading}
           className={cn(
             "rounded-xl px-6 transition-all duration-200",
             "bg-primary text-primary-foreground hover:bg-primary/90",

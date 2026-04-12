@@ -181,7 +181,7 @@ export async function generatePlan(userInput: string, filters: Filters): Promise
 
 function validatePlan(plan: IntelPlan, filters: Filters): IntelPlan {
   const competitors = Array.isArray(plan.competitors)
-    ? plan.competitors.filter((c) => c.name && c.url).slice(0, filters.maxCompetitors || 5)
+    ? plan.competitors.filter((c) => c.name && c.url).slice(0, filters.maxCompetitors ?? 5)
     : [];
 
   // Ensure all URLs are real website URLs, not Google search links
@@ -211,7 +211,7 @@ function getDefaultPlan(userInput: string, filters: Filters): IntelPlan {
   // First try to match known companies
   const found: { name: string; url: string }[] = [];
   for (const [key, url] of Object.entries(KNOWN_URLS)) {
-    if (input.includes(key) && found.length < (filters.maxCompetitors || 5)) {
+    if (input.includes(key) && found.length < (filters.maxCompetitors ?? 5)) {
       // Capitalize the name properly
       const name = key.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
       // Avoid duplicates
@@ -237,7 +237,7 @@ function getDefaultPlan(userInput: string, filters: Filters): IntelPlan {
     .trim();
 
   const words = cleanInput.split(/\s+/).filter((w) => w.length > 2);
-  const competitors = words.slice(0, filters.maxCompetitors || 3).map((w) => {
+  const competitors = words.slice(0, filters.maxCompetitors ?? 3).map((w) => {
     const name = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
     const known = resolveUrl(w);
     return {

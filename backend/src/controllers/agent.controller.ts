@@ -5,6 +5,7 @@ import { setLLMConfig } from "../llm/groq.client";
 import { executeIntelPlan } from "../services/agent.orchestrator";
 import type { CompetitorIntel } from "../services/agent.orchestrator";
 import { cancelTinyFishRun } from "../services/tinyfish.service";
+import { appendToStore } from "../services/store";
 
 // In-memory store per run 
 const runStore = new Map<string, {
@@ -12,7 +13,7 @@ const runStore = new Map<string, {
   done: boolean;
   reports: CompetitorIntel[];
   abortController?: AbortController;
-  tinyFishRunId?: string;
+  tinyFishRunIds: string[];
 }>();
 
 export async function startAgent(req: Request, res: Response) {
@@ -35,7 +36,7 @@ export async function startAgent(req: Request, res: Response) {
 
   const runId = uuid();
   const abortController = new AbortController();
-  runStore.set(runId, { logs: [], done: false, reports: [], abortController });
+  runStore.set(runId, { logs: [], done: false, reports: [], abortController, tinyFishRunIds: [] });
 
   // Return runId immediately
   res.json({ success: true, runId });
@@ -62,6 +63,18 @@ export async function startAgent(req: Request, res: Response) {
         tasks: filters?.tasks || ["pricing", "jobs", "reviews", "blog"],
         maxDepth: 3,
       };
+    } else if (filters?.maxCompetitors === 0) {
+      // No competitors — just analyze the input URL itself
+      run.logs.push("Self-analysis mode (no competitors)");
+      let targetUrl = prompt.trim();
+      if (!targetUrl.startsWith("http")) targetUrl = "https://" + targetUrl;
+      let name = prompt.trim();
+      try { name = new URL(targetUrl).hostname.replace("www.", "").split(".")[0]; name = name.charAt(0).toUpperCase() + name.slice(1); } catch {}
+      plan = {
+        competitors: [{ name, url: targetUrl }],
+        tasks: filters?.tasks || ["pricing", "jobs", "reviews", "blog"],
+        maxDepth: 3,
+      };
     } else {
       run.logs.push("Generating intelligence gathering plan...");
       plan = await generatePlan(prompt, filters || {});
@@ -73,7 +86,7 @@ export async function startAgent(req: Request, res: Response) {
 
     const results = await executeIntelPlan(plan, (log) => {
       run.logs.push(log);
-    }, abortController.signal, (id) => { run.tinyFishRunId = id; });
+    }, abortController.signal, (id) => { if (id && !run.tinyFishRunIds.includes(id)) run.tinyFishRunIds.push(id); });
 
     run.reports = results.reports;
     run.logs.push(`Intelligence report complete. ${results.reports.length} competitor${results.reports.length !== 1 ? "s" : ""} analyzed, ${results.activitiesCount} web actions performed.`);
@@ -85,6 +98,15 @@ export async function startAgent(req: Request, res: Response) {
     }
   } finally {
     run.done = true;
+    // Persist to history
+    appendToStore("agentHistory", {
+      id: runId,
+      prompt,
+      timestamp: new Date().toISOString(),
+      competitorsCount: run.reports.length,
+      logsCount: run.logs.length,
+      status: run.reports.length > 0 ? "complete" : "error",
+    });
   }
 }
 
@@ -162,18 +184,22 @@ export async function cancelAgent(req: Request, res: Response) {
     return;
   }
   let tinyFishCancelled = false;
-  if (run.tinyFishRunId) {
-    tinyFishCancelled = await cancelTinyFishRun(run.tinyFishRunId);
-    run.logs.push(tinyFishCancelled ? "TinyFish agent cancelled on server." : `TinyFish cancel attempted (runId: ${run.tinyFishRunId}) — check server logs.`);
+  if (run.tinyFishRunIds.length > 0) {
+    const results = await Promise.allSettled(
+      run.tinyFishRunIds.map(id => cancelTinyFishRun(id))
+    );
+    const cancelledCount = results.filter(r => r.status === "fulfilled" && r.value).length;
+    tinyFishCancelled = cancelledCount > 0;
+    run.logs.push(`Cancelled ${cancelledCount}/${run.tinyFishRunIds.length} TinyFish agent(s).`);
   } else {
-    run.logs.push("No TinyFish run ID captured — stopping local stream only.");
+    run.logs.push("No TinyFish run IDs captured — stopping local stream only.");
   }
   if (run.abortController) {
     run.abortController.abort();
     run.logs.push("Agent stopped by user.");
   }
   run.done = true;
-  res.json({ success: true, message: "Agent cancelled", tinyFishCancelled, tinyFishRunId: run.tinyFishRunId || null });
+  res.json({ success: true, message: "Agent cancelled", tinyFishCancelled, tinyFishRunIds: run.tinyFishRunIds });
 }
 
 /** Expose all runs for dashboard aggregation */

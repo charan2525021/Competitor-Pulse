@@ -9,6 +9,7 @@ import formsRoutes from "./routes/forms.routes";
 import storeRoutes from "./routes/store.routes";
 import strategyRoutes from "./routes/strategy.routes";
 import outreachRoutes from "./routes/outreach.routes";
+import authRoutes from "./routes/auth.routes";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -18,6 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/agent", agentRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/dashboard", dashboardRoutes);

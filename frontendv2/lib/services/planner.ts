@@ -1,5 +1,3 @@
-"use server"
-
 import { callLLM, parseJSONFromLLM } from "./llm"
 
 // Known company URL mappings

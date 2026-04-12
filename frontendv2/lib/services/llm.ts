@@ -1,5 +1,3 @@
-"use server"
-
 import { createGroq } from "@ai-sdk/groq"
 import { generateText } from "ai"
 

@@ -1,273 +1,135 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import type { AgentLog, CompetitorReport } from "@/lib/types"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { LogEntry } from "@/components/live-logs"
+import { startAgent, createLogStream, fetchRunReports } from "@/lib/api"
 
-interface UseAgentLogsOptions {
-  runId?: string | null
-  onComplete?: (reports: CompetitorReport[]) => void
+/* ── localStorage cache ── */
+function getCachedReports(runId: string): any[] | null {
+  try { const raw = localStorage.getItem(`cp_reports_${runId}`); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function cacheReports(runId: string, reports: any[]) {
+  try { localStorage.setItem(`cp_reports_${runId}`, JSON.stringify(reports)); } catch { /* quota */ }
 }
 
-interface UseAgentLogsReturn {
-  logs: LogEntry[]
-  isRunning: boolean
-  reports: CompetitorReport[]
-  streamingUrl: string | null
-  clearLogs: () => void
-  addLog: (log: AgentLog) => void
-  startAnalysis: (url: string) => Promise<CompetitorReport[] | null>
-}
+const ACTIVE_HOME_RUN_KEY = "cp_active_home_run"
 
-export function useAgentLogs(options: UseAgentLogsOptions = {}): UseAgentLogsReturn {
-  const { runId, onComplete } = options
+export function useAgentLogs(runIdProp: string | null = null) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [isRunning, setIsRunning] = useState(false)
-  const [reports, setReports] = useState<CompetitorReport[]>([])
-  const [streamingUrl, setStreamingUrl] = useState<string | null>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
-  const hasCompletedRef = useRef(false)
+  const [reports, setReports] = useState<any[]>([])
+  const [activeRunId, setActiveRunId] = useState<string | null>(null)
+  const esRef = useRef<EventSource | null>(null)
 
-  // Simulated analysis steps for demo
-  const simulatedSteps = [
-    { type: "info" as const, message: "Initializing browser agent..." },
-    { type: "info" as const, message: "Navigating to target website..." },
-    { type: "success" as const, message: "Website loaded successfully" },
-    { type: "info" as const, message: "Scanning page structure..." },
-    { type: "info" as const, message: "Detecting pricing elements..." },
-    { type: "success" as const, message: "Found pricing page" },
-    { type: "info" as const, message: "Extracting pricing tiers..." },
-    { type: "success" as const, message: "Extracted 3 pricing tiers" },
-    { type: "info" as const, message: "Searching for job postings..." },
-    { type: "success" as const, message: "Found 24 open positions" },
-    { type: "info" as const, message: "Analyzing hiring trends..." },
-    { type: "info" as const, message: "Collecting customer reviews..." },
-    { type: "success" as const, message: "Aggregated 156 reviews from 4 platforms" },
-    { type: "info" as const, message: "Generating AI insights..." },
-    { type: "success" as const, message: "Analysis complete!" },
-  ]
+  /* ── Subscribe to SSE when a runId is given (or obtained via startAnalysis) ── */
+  const connectSSE = useCallback((runId: string) => {
+    setLogs([])
+    setIsRunning(true)
+    setReports([])
+    setActiveRunId(runId)
+    try { localStorage.setItem(ACTIVE_HOME_RUN_KEY, runId) } catch {}
 
-  const startAnalysis = useCallback(async (url: string): Promise<CompetitorReport[] | null> => {
+    const cached = getCachedReports(runId)
+    if (cached && cached.length > 0) setReports(cached)
+
+    const es = createLogStream(
+      runId,
+      (data) => {
+        if (data.message) {
+          setLogs((prev) => [...prev, {
+            id: crypto.randomUUID(),
+            type: data.level || data.type || "info",
+            message: data.message,
+            timestamp: new Date(),
+          }])
+        }
+      },
+      async (incomingReports) => {
+        setIsRunning(false)
+        setActiveRunId(null)
+        try { localStorage.removeItem(ACTIVE_HOME_RUN_KEY) } catch {}
+        if (incomingReports && incomingReports.length > 0) {
+          setReports(incomingReports)
+          cacheReports(runId, incomingReports)
+        } else {
+          try {
+            const res = await fetchRunReports(runId)
+            if (res.success && res.reports?.length > 0) {
+              setReports(res.reports)
+              cacheReports(runId, res.reports)
+            }
+          } catch { /* ignore */ }
+        }
+      }
+    )
+    esRef.current = es
+  }, [])
+
+  /* ── Auto-connect if a prop runId is provided (handles page refresh) ── */
+  useEffect(() => {
+    if (!runIdProp) return
+    connectSSE(runIdProp)
+    return () => { esRef.current?.close() }
+  }, [runIdProp, connectSSE])
+
+  /* ── Auto-restore from localStorage on mount (page refresh recovery) ── */
+  useEffect(() => {
+    if (runIdProp) return
+    const savedRunId = (() => { try { return localStorage.getItem(ACTIVE_HOME_RUN_KEY) } catch { return null } })()
+    if (!savedRunId) return
+
+    let cancelled = false
+    fetchRunReports(savedRunId).then(res => {
+      if (cancelled) return
+      if (!res.success) {
+        try { localStorage.removeItem(ACTIVE_HOME_RUN_KEY) } catch {}
+        return
+      }
+      if (!res.done) {
+        connectSSE(savedRunId)
+      } else {
+        try { localStorage.removeItem(ACTIVE_HOME_RUN_KEY) } catch {}
+        if (res.reports?.length > 0) {
+          setReports(res.reports)
+          cacheReports(savedRunId, res.reports)
+        }
+      }
+    }).catch(() => {
+      try { localStorage.removeItem(ACTIVE_HOME_RUN_KEY) } catch {}
+    })
+
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /* ── Start a full analysis from the home page ── */
+  const startAnalysis = useCallback(async (url: string, opts?: { tasks?: string[]; maxCompetitors?: number }) => {
     setLogs([])
     setReports([])
-    setStreamingUrl(null)
-    hasCompletedRef.current = false
     setIsRunning(true)
 
-    const addLogEntry = (type: LogEntry["type"], message: string) => {
-      const newLog: LogEntry = {
-        id: crypto.randomUUID(),
-        type,
-        message,
-        timestamp: new Date(),
-      }
-      setLogs((prev) => [...prev, newLog])
-    }
+    let filters: Record<string, any> = {}
+    try { filters = JSON.parse(localStorage.getItem("cp_filters") || "{}") } catch {}
+    if (opts?.tasks && opts.tasks.length > 0) filters.tasks = opts.tasks
+    if (opts?.maxCompetitors !== undefined) filters.maxCompetitors = opts.maxCompetitors
 
     try {
-      // Show initial logs
-      addLogEntry("info", "Initializing AI analysis agent...")
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      
-      addLogEntry("info", `Connecting to ${url}...`)
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      
-      addLogEntry("success", "Target website identified")
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      
-      addLogEntry("info", "Scanning for pricing information...")
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      
-      addLogEntry("info", "Searching job postings...")
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      
-      addLogEntry("info", "Collecting customer reviews...")
-      await new Promise((resolve) => setTimeout(resolve, 300))
-      
-      addLogEntry("info", "Generating AI insights with Groq LLaMA 3.3...")
-      
-      // Call real AI API
-      const response = await fetch("/api/ai/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Analysis failed")
-      }
-
-      const result = await response.json()
-      
-      if (result.success && result.data) {
-        addLogEntry("success", "Pricing data extracted")
-        await new Promise((resolve) => setTimeout(resolve, 200))
-        
-        addLogEntry("success", `Found ${result.data.jobs?.total || 0} job postings`)
-        await new Promise((resolve) => setTimeout(resolve, 200))
-        
-        addLogEntry("success", `Aggregated ${result.data.reviews?.totalCount || 0} reviews`)
-        await new Promise((resolve) => setTimeout(resolve, 200))
-        
-        addLogEntry("success", "AI analysis complete!")
-
-        const domain = url.replace(/^https?:\/\//, "").replace(/\/$/, "")
-        const report: CompetitorReport = {
-          id: result.analysisId || crypto.randomUUID(),
-          competitor: result.data.competitor?.name || domain,
-          analyzedAt: new Date().toISOString(),
-          pricing: {
-            model: result.data.pricing?.model || "Unknown",
-            plans: result.data.pricing?.plans || [],
-          },
-          jobs: {
-            total: result.data.jobs?.total || 0,
-            byDepartment: result.data.jobs?.departments?.map((d: { name: string; count: number; trend: number }) => ({
-              name: d.name,
-              count: d.count,
-              growth: d.trend,
-            })) || [],
-          },
-          reviews: {
-            averageRating: result.data.reviews?.averageRating || 0,
-            totalCount: result.data.reviews?.totalCount || 0,
-            byPlatform: result.data.reviews?.platforms || [],
-            sentiment: result.data.reviews?.sentiment || { positive: 0, neutral: 0, negative: 0 },
-          },
-          insights: result.data.insights?.recommendations?.map((r: { title: string }) => r.title) || 
-                    result.data.insights?.strengths || [],
-        }
-
-        setReports([report])
+      const data = await startAgent(url, filters)
+      if (!data.success || !data.runId) {
+        setLogs([{ id: crypto.randomUUID(), type: "error", message: data.error || "Failed to start agent", timestamp: new Date() }])
         setIsRunning(false)
-        onComplete?.([report])
-        return [report]
-      } else {
-        throw new Error(result.error || "Unknown error")
+        return null
       }
-    } catch (error) {
-      addLogEntry("error", `Analysis failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+      connectSSE(data.runId)
+      return data.runId
+    } catch (err) {
+      setLogs([{ id: crypto.randomUUID(), type: "error", message: `Agent start failed: ${err instanceof Error ? err.message : "Unknown"}`, timestamp: new Date() }])
       setIsRunning(false)
       return null
     }
-  }, [onComplete])
+  }, [connectSSE])
 
-  const clearLogs = useCallback(() => {
-    setLogs([])
-    setReports([])
-    setStreamingUrl(null)
-    hasCompletedRef.current = false
-  }, [])
+  const clearLogs = useCallback(() => { setLogs([]); setReports([]); setActiveRunId(null) }, [])
 
-  const addLog = useCallback((log: AgentLog) => {
-    setLogs((prev) => [...prev, { ...log, id: crypto.randomUUID(), timestamp: new Date().toISOString() }])
-  }, [])
-
-  // SSE connection for real-time logs
-  useEffect(() => {
-    if (!runId) {
-      setIsRunning(false)
-      return
-    }
-
-    // Clear previous state
-    clearLogs()
-    setIsRunning(true)
-    hasCompletedRef.current = false
-
-    // Check for cached reports first
-    const cachedReports = localStorage.getItem(`cp_reports_${runId}`)
-    if (cachedReports) {
-      try {
-        const parsed = JSON.parse(cachedReports) as CompetitorReport[]
-        setReports(parsed)
-        setIsRunning(false)
-        return
-      } catch {
-        // Continue with SSE if cache is invalid
-      }
-    }
-
-    // Connect to SSE endpoint
-    const eventSource = new EventSource(`/api/agent/logs/${runId}`)
-    eventSourceRef.current = eventSource
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        if (data.type === "log") {
-          const log: AgentLog = {
-            id: crypto.randomUUID(),
-            type: data.logType || "info",
-            message: data.message,
-            timestamp: data.timestamp || new Date().toISOString(),
-            details: data.details
-          }
-          setLogs((prev) => [...prev, log])
-        } else if (data.type === "streaming_url") {
-          setStreamingUrl(data.url)
-        } else if (data.type === "reports") {
-          setReports(data.reports)
-          localStorage.setItem(`cp_reports_${runId}`, JSON.stringify(data.reports))
-        } else if (data.type === "complete") {
-          setIsRunning(false)
-          hasCompletedRef.current = true
-          if (data.reports) {
-            setReports(data.reports)
-            localStorage.setItem(`cp_reports_${runId}`, JSON.stringify(data.reports))
-            onComplete?.(data.reports)
-          }
-          eventSource.close()
-        } else if (data.type === "error") {
-          const errorLog: AgentLog = {
-            id: crypto.randomUUID(),
-            type: "error",
-            message: data.message || "An error occurred",
-            timestamp: new Date().toISOString()
-          }
-          setLogs((prev) => [...prev, errorLog])
-          setIsRunning(false)
-          eventSource.close()
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    }
-
-    eventSource.onerror = () => {
-      setIsRunning(false)
-      eventSource.close()
-      
-      // Fallback to REST endpoint if SSE fails
-      if (!hasCompletedRef.current) {
-        fetch(`/api/agent/reports/${runId}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.reports) {
-              setReports(data.reports)
-              onComplete?.(data.reports)
-            }
-          })
-          .catch(() => {
-            // Ignore fetch errors
-          })
-      }
-    }
-
-    return () => {
-      eventSource.close()
-      eventSourceRef.current = null
-    }
-  }, [runId, clearLogs, onComplete])
-
-  return {
-    logs,
-    isRunning,
-    reports,
-    streamingUrl,
-    clearLogs,
-    addLog,
-    startAnalysis
-  }
+  return { logs, isRunning, reports, activeRunId, clearLogs, startAnalysis }
 }

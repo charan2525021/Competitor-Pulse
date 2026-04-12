@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { v4 as uuid } from "uuid";
 import { runTinyFishAgent, llmExtract, cancelTinyFishRun } from "../services/tinyfish.service";
 import { callGroq, setLLMConfig } from "../llm/groq.client";
-import { loadConfig } from "../services/store";
+import { loadConfig, appendToStore } from "../services/store";
 
 // In-memory store
 const formRunStore = new Map<string, {
@@ -170,6 +170,15 @@ If unclear, make your best assessment.`);
     run.result = { success: false, error: (err as Error).message };
   } finally {
     run.done = true;
+    // Persist to history
+    appendToStore("formHistory", {
+      id: runId,
+      companyName: target,
+      formType,
+      timestamp: new Date().toISOString(),
+      status: run.result?.success ? "complete" : "error",
+      logsCount: run.logs.length,
+    });
   }
 }
 

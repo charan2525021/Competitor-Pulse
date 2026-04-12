@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   DollarSign, Briefcase, Star, FileText, Cpu, Share2,
   Trash2, ExternalLink, ChevronRight, Database,
@@ -36,15 +37,14 @@ export function IntelDataPanel({ records, onDelete }: IntelDataPanelProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2.5 mb-1">
-        <span className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)", color: "#fff" }}>
+        <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
+          style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)" }}>
           <Database size={15} />
         </span>
-        <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
           Intel Data
         </h2>
-        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold"
-          style={{ backgroundColor: "var(--accent-soft)", color: "var(--accent)" }}>
+        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold bg-primary/10 text-primary">
           {records.length}
         </span>
       </div>
@@ -98,33 +98,28 @@ function RecordRow({ record, onDelete }: { record: IntelRecord; onDelete: (id: s
   const color = tab?.color || "#3b82f6";
 
   return (
-    <div className="rounded-xl transition-all duration-200"
-      style={{ backgroundColor: "var(--bg-input)", border: `1px solid var(--border)` }}>
-      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer"
+    <div className="rounded-xl transition-all duration-200 bg-muted border border-border">
+      <div className="flex items-center gap-2 px-3 py-2 cursor-pointer rounded-xl hover:bg-muted/50"
         onClick={() => setExpanded(!expanded)}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-hover)")}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
       >
         <span className="w-5 h-5 rounded flex items-center justify-center shrink-0"
           style={{ backgroundColor: `${color}15`, color }}>{tab?.icon}</span>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+          <div className="text-xs font-semibold truncate text-foreground">
             {record.company}
           </div>
-          <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+          <div className="text-[10px] text-muted-foreground">
             {new Date(record.scanDate).toLocaleDateString()}
           </div>
         </div>
         <button onClick={(e) => { e.stopPropagation(); onDelete(record.id); }}
-          className="w-6 h-6 rounded flex items-center justify-center shrink-0 transition-all duration-200 hover:scale-110"
-          style={{ color: "#ef4444" }} title="Delete">
+          className="w-6 h-6 rounded flex items-center justify-center shrink-0 transition-all duration-200 hover:scale-110 text-red-500" title="Delete">
           <Trash2 size={12} />
         </button>
-        <ChevronRight size={12} style={{
-          color: "var(--text-muted)",
-          transform: expanded ? "rotate(90deg)" : "rotate(0)",
-          transition: "transform 0.2s ease",
-        }} />
+        <ChevronRight size={12} className={cn(
+          "text-muted-foreground transition-transform duration-200",
+          expanded && "rotate-90"
+        )} />
       </div>
       {expanded && (
         <div className="px-3 pb-3 animate-fade-in">
@@ -144,13 +139,12 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="space-y-1.5">
           {plans.map((p: any, i: number) => (
-            <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg"
-              style={{ backgroundColor: "var(--bg-card)" }}>
-              <span style={{ color: "var(--text-primary)" }}>{p.name || p.tier || p.plan || `Plan ${i + 1}`}</span>
-              <span className="font-bold" style={{ color: "#22c55e" }}>{p.price || p.cost || "N/A"}</span>
+            <div key={i} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-card">
+              <span className="text-foreground">{p.name || p.tier || p.plan || `Plan ${i + 1}`}</span>
+              <span className="font-bold text-green-500">{p.price || p.cost || "N/A"}</span>
             </div>
           ))}
-          {data?.model && <div className="text-[10px] px-2" style={{ color: "var(--text-muted)" }}>Model: {data.model}</div>}
+          {data?.model && <div className="text-[10px] px-2 text-muted-foreground">Model: {data.model}</div>}
         </div>
       );
     }
@@ -161,10 +155,9 @@ function RecordDetail({ record }: { record: IntelRecord }) {
         return (
           <div className="space-y-1">
             {entries.map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg"
-                style={{ backgroundColor: "var(--bg-card)" }}>
-                <span className="capitalize" style={{ color: "var(--text-primary)" }}>{k.replace(/_/g, " ")}</span>
-                <span style={{ color: "#22c55e" }}>{typeof v === "string" ? v : JSON.stringify(v)}</span>
+              <div key={k} className="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-card">
+                <span className="capitalize text-foreground">{k.replace(/_/g, " ")}</span>
+                <span className="text-green-500">{typeof v === "string" ? v : JSON.stringify(v)}</span>
               </div>
             ))}
           </div>
@@ -179,20 +172,18 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="space-y-1">
           {jobs.slice(0, 8).map((j: any, i: number) => (
-            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: "var(--bg-card)" }}>
-              <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>{j.title || j.role || j.position || JSON.stringify(j)}</span>
-              {(j.location || j.loc) && <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>{j.location || j.loc}</span>}
+            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2 bg-card">
+              <span className="flex-1 truncate text-foreground">{j.title || j.role || j.position || JSON.stringify(j)}</span>
+              {(j.location || j.loc) && <span className="text-[10px] shrink-0 text-muted-foreground">{j.location || j.loc}</span>}
               {j.url && (
-                <a href={j.url} target="_blank" rel="noopener noreferrer" className="shrink-0"
-                  style={{ color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>
+                <a href={j.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-primary" onClick={(e) => e.stopPropagation()}>
                   <ExternalLink size={10} />
                 </a>
               )}
             </div>
           ))}
           {jobs.length > 8 && (
-            <div className="text-[10px] text-center" style={{ color: "var(--text-muted)" }}>+{jobs.length - 8} more</div>
+            <div className="text-[10px] text-center text-muted-foreground">+{jobs.length - 8} more</div>
           )}
         </div>
       );
@@ -205,23 +196,21 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       <div className="space-y-1.5">
         {(data?.rating || data?.averageRating) && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="font-bold" style={{ color: "#f59e0b" }}>{data.rating || data.averageRating}/5</span>
-            <span style={{ color: "var(--text-muted)" }}>({data.totalReviews || data.reviewCount || "?"} reviews)</span>
+            <span className="font-bold text-amber-500">{data.rating || data.averageRating}/5</span>
+            <span className="text-muted-foreground">({data.totalReviews || data.reviewCount || "?"} reviews)</span>
           </div>
         )}
         {reviews.slice(0, 4).map((r: any, i: number) => (
-          <div key={i} className="text-[11px] px-2 py-1.5 rounded-lg"
-            style={{ backgroundColor: "var(--bg-card)", color: "var(--text-secondary)" }}>
+          <div key={i} className="text-[11px] px-2 py-1.5 rounded-lg bg-card text-muted-foreground">
             {r.summary || r.title || r.text || r.content || (typeof r === "string" ? r : JSON.stringify(r))}
           </div>
         ))}
         {reviews.length === 0 && typeof data === "object" && (
           <div className="space-y-1">
             {Object.entries(data).filter(([k]) => !k.startsWith("_")).map(([k, v]) => (
-              <div key={k} className="text-[11px] px-2 py-1.5 rounded-lg flex justify-between"
-                style={{ backgroundColor: "var(--bg-card)" }}>
-                <span className="capitalize" style={{ color: "var(--text-muted)" }}>{k.replace(/_/g, " ")}</span>
-                <span style={{ color: "var(--text-primary)" }}>{typeof v === "string" ? v : JSON.stringify(v)}</span>
+              <div key={k} className="text-[11px] px-2 py-1.5 rounded-lg flex justify-between bg-card">
+                <span className="capitalize text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                <span className="text-foreground">{typeof v === "string" ? v : JSON.stringify(v)}</span>
               </div>
             ))}
           </div>
@@ -236,13 +225,11 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="space-y-1">
           {posts.slice(0, 6).map((p: any, i: number) => (
-            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: "var(--bg-card)" }}>
-              <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>{p.title || p.headline || (typeof p === "string" ? p : JSON.stringify(p))}</span>
-              {p.date && <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>{p.date}</span>}
+            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2 bg-card">
+              <span className="flex-1 truncate text-foreground">{p.title || p.headline || (typeof p === "string" ? p : JSON.stringify(p))}</span>
+              {p.date && <span className="text-[10px] shrink-0 text-muted-foreground">{p.date}</span>}
               {p.url && (
-                <a href={p.url} target="_blank" rel="noopener noreferrer" className="shrink-0"
-                  style={{ color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-primary" onClick={(e) => e.stopPropagation()}>
                   <ExternalLink size={10} />
                 </a>
               )}
@@ -259,8 +246,7 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="flex flex-wrap gap-1.5">
           {feats.map((f: any, i: number) => (
-            <span key={i} className="text-[10px] px-2 py-1 rounded-md"
-              style={{ backgroundColor: "rgba(6,182,212,0.1)", color: "#06b6d4" }}>
+            <span key={i} className="text-[10px] px-2 py-1 rounded-md bg-cyan-500/10 text-cyan-500">
               {typeof f === "string" ? f : f.name || f.title || JSON.stringify(f)}
             </span>
           ))}
@@ -276,14 +262,12 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="space-y-1">
           {profiles.map((s: any, i: number) => (
-            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: "var(--bg-card)" }}>
-              <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>{s.platform || s.name || "Social"}</span>
-              {s.handle && <span className="text-[10px] shrink-0" style={{ color: "#ec4899" }}>{s.handle}</span>}
-              {s.followers && <span className="text-[10px] shrink-0" style={{ color: "var(--text-muted)" }}>{s.followers}</span>}
+            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2 bg-card">
+              <span className="flex-1 truncate text-foreground">{s.platform || s.name || "Social"}</span>
+              {s.handle && <span className="text-[10px] shrink-0 text-pink-500">{s.handle}</span>}
+              {s.followers && <span className="text-[10px] shrink-0 text-muted-foreground">{s.followers}</span>}
               {s.url && (
-                <a href={s.url} target="_blank" rel="noopener noreferrer" className="shrink-0"
-                  style={{ color: "#ec4899" }} onClick={(e) => e.stopPropagation()}>
+                <a href={s.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-pink-500" onClick={(e) => e.stopPropagation()}>
                   <ExternalLink size={10} />
                 </a>
               )}
@@ -296,10 +280,9 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="space-y-1">
           {Object.entries(data).filter(([k]) => !k.startsWith("_")).map(([k, v]) => (
-            <div key={k} className="text-xs px-2 py-1.5 rounded-lg flex items-center justify-between"
-              style={{ backgroundColor: "var(--bg-card)" }}>
-              <span className="capitalize" style={{ color: "var(--text-primary)" }}>{k}</span>
-              <span style={{ color: "#ec4899" }}>{typeof v === "string" ? v : JSON.stringify(v)}</span>
+            <div key={k} className="text-xs px-2 py-1.5 rounded-lg flex items-center justify-between bg-card">
+              <span className="capitalize text-foreground">{k}</span>
+              <span className="text-pink-500">{typeof v === "string" ? v : JSON.stringify(v)}</span>
             </div>
           ))}
         </div>
@@ -315,23 +298,22 @@ function RecordDetail({ record }: { record: IntelRecord }) {
         {/* Form info */}
         <div className="flex flex-wrap gap-2 text-[10px]">
           {result?.formTitle && (
-            <span className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(99,102,241,0.1)", color: "#6366f1" }}>
+            <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500">
               {result.formTitle}
             </span>
           )}
           {data?.formType && (
-            <span className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6" }}>
+            <span className="px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-500">
               {data.formType}
             </span>
           )}
           {result?.success && (
-            <span className="px-2 py-0.5 rounded-md" style={{ backgroundColor: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+            <span className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-500">
               Submitted
             </span>
           )}
           {data?.url && (
-            <a href={data.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-0.5 rounded-md"
-              style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#3b82f6" }} onClick={(e) => e.stopPropagation()}>
+            <a href={data.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500" onClick={(e) => e.stopPropagation()}>
               {data.url.length > 40 ? data.url.substring(0, 40) + "..." : data.url} <ExternalLink size={8} />
             </a>
           )}
@@ -339,22 +321,20 @@ function RecordDetail({ record }: { record: IntelRecord }) {
         {/* Filled fields */}
         {fields.length > 0 && (
           <div className="space-y-1">
-            <div className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Fields Filled</div>
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Fields Filled</div>
             {fields.map((f: any, i: number) => (
-              <div key={i} className="flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg"
-                style={{ backgroundColor: "var(--bg-card)" }}>
-                <span className="font-medium shrink-0 min-w-[100px]" style={{ color: "var(--accent)" }}>
+              <div key={i} className="flex items-start gap-2 text-xs px-2 py-1.5 rounded-lg bg-card">
+                <span className="font-medium shrink-0 min-w-[100px] text-primary">
                   {f.label || f.field || f.name}
                 </span>
-                <span className="break-all" style={{ color: "var(--text-primary)" }}>{f.value || "—"}</span>
+                <span className="break-all text-foreground">{f.value || "—"}</span>
               </div>
             ))}
           </div>
         )}
         {/* Confirmation */}
         {result?.confirmationMessage && (
-          <div className="text-[11px] px-2 py-1.5 rounded-lg flex items-start gap-1.5"
-            style={{ backgroundColor: "rgba(34,197,94,0.08)", color: "#22c55e" }}>
+          <div className="text-[11px] px-2 py-1.5 rounded-lg flex items-start gap-1.5 bg-green-500/[0.08] text-green-500">
             <span className="shrink-0 mt-0.5">✓</span>
             <span>{result.confirmationMessage}</span>
           </div>
@@ -369,21 +349,19 @@ function RecordDetail({ record }: { record: IntelRecord }) {
       return (
         <div className="space-y-1">
           {leads.slice(0, 10).map((l: any, i: number) => (
-            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: "var(--bg-card)" }}>
-              <span className="font-medium truncate" style={{ color: "var(--text-primary)" }}>{l.name}</span>
-              {l.company && <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#3b82f6" }}>{l.company}</span>}
-              {l.role && <span className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{l.role}</span>}
-              {l.email && <span className="text-[10px] shrink-0" style={{ color: "#22c55e" }}>{l.email}</span>}
+            <div key={i} className="text-xs px-2 py-1.5 rounded-lg flex items-center gap-2 bg-card">
+              <span className="font-medium truncate text-foreground">{l.name}</span>
+              {l.company && <span className="text-[10px] px-1.5 py-0.5 rounded shrink-0 bg-blue-500/10 text-blue-500">{l.company}</span>}
+              {l.role && <span className="text-[10px] truncate text-muted-foreground">{l.role}</span>}
+              {l.email && <span className="text-[10px] shrink-0 text-green-500">{l.email}</span>}
               {l.linkedinUrl && (
-                <a href={l.linkedinUrl} target="_blank" rel="noopener noreferrer" className="shrink-0"
-                  style={{ color: "var(--accent)" }} onClick={(e) => e.stopPropagation()}>
+                <a href={l.linkedinUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-primary" onClick={(e) => e.stopPropagation()}>
                   <ExternalLink size={10} />
                 </a>
               )}
             </div>
           ))}
-          {leads.length > 10 && <div className="text-[10px] text-center" style={{ color: "var(--text-muted)" }}>+{leads.length - 10} more</div>}
+          {leads.length > 10 && <div className="text-[10px] text-center text-muted-foreground">+{leads.length - 10} more</div>}
         </div>
       );
     }
@@ -391,8 +369,7 @@ function RecordDetail({ record }: { record: IntelRecord }) {
 
   // Fallback: pretty-print any data
   return (
-    <pre className="text-[10px] overflow-auto max-h-32 p-2 rounded-lg"
-      style={{ backgroundColor: "var(--bg-card)", color: "var(--text-secondary)" }}>
+    <pre className="text-[10px] overflow-auto max-h-32 p-2 rounded-lg bg-card text-muted-foreground">
       {JSON.stringify(data, null, 2)}
     </pre>
   );
@@ -401,9 +378,9 @@ function RecordDetail({ record }: { record: IntelRecord }) {
 function EmptyState({ tab }: { tab: string }) {
   const tabInfo = TABS.find((t) => t.id === tab);
   return (
-    <div className="text-center py-8" style={{ color: "var(--text-muted)" }}>
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-        style={{ backgroundColor: `${tabInfo?.color || "#3b82f6"}10`, color: tabInfo?.color || "#3b82f6", opacity: 0.4 }}>
+    <div className="text-center py-8 text-muted-foreground">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3 opacity-40"
+        style={{ backgroundColor: `${tabInfo?.color || "#3b82f6"}10`, color: tabInfo?.color || "#3b82f6" }}>
         {tabInfo?.icon || <Database size={18} />}
       </div>
       <p className="text-xs">No {tabInfo?.label?.toLowerCase() || tab} data yet</p>
