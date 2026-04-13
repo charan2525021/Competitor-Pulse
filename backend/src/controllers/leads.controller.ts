@@ -104,7 +104,10 @@ If no profiles found, return: { "leads": [] }`);
       status: run.leads.length > 0 ? "complete" : "error",
       logsCount: run.logs.length,
     });
-  }(req: Request, res: Response) {
+  }
+}
+
+export function streamLeadLogs(req: Request, res: Response) {
   const { runId } = req.params;
 
   const run = leadRunStore.get(runId as string);
