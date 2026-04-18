@@ -180,26 +180,28 @@ Generate a JSON array of leads:
     }
   }
 
-  // Fallback: generate realistic leads using LLM
-  const mockPrompt = `
-Generate 5 realistic business leads for ${company}${title ? ` in ${title} roles` : ""}.
+  // Fallback: ask LLM to generate leads based on available knowledge
+  const llmPrompt = `
+Search for real business contacts at ${company}${title ? ` in ${title} roles` : ""}.
 
-Generate a JSON array:
+Generate a JSON array of the most likely contacts:
 [
   {
     "name": "Full Name",
     "title": "Job Title",
     "company": "${company}",
-    "location": "${location || "San Francisco, CA"}"
+    "location": "${location || "Unknown"}"
   }
 ]
+
+If you cannot find real contacts, return an empty array: []
 `
 
-  const mockResult = await callLLM(mockPrompt, { jsonMode: true })
+  const llmResult = await callLLM(llmPrompt, { jsonMode: true })
   
-  if (mockResult.success && mockResult.text) {
-    const parsed = parseJSONFromLLM(mockResult.text) as Lead[] | null
-    if (Array.isArray(parsed)) {
+  if (llmResult.success && llmResult.text) {
+    const parsed = parseJSONFromLLM(llmResult.text) as Lead[] | null
+    if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.map(lead => ({
         ...lead,
         email: generatePrimaryEmail(lead.name, company),
@@ -209,8 +211,8 @@ Generate a JSON array:
     }
   }
 
-  // Final fallback with mock data
-  return generateFallbackLeads(company, title, location, industry)
+  // No results found
+  return []
 }
 
 function generatePrimaryEmail(name: string, company: string): string {
@@ -220,25 +222,6 @@ function generatePrimaryEmail(name: string, company: string): string {
   const domain = company.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com"
   
   return `${first}.${last}@${domain}`
-}
-
-function generateFallbackLeads(company: string, title?: string, location?: string, industry?: string): Lead[] {
-  const firstNames = ["Sarah", "Michael", "Jennifer", "David", "Emily"]
-  const lastNames = ["Johnson", "Williams", "Chen", "Patel", "Anderson"]
-  const titles = title ? [title] : ["VP of Sales", "Head of Marketing", "Director of Engineering", "Product Lead", "Growth Manager"]
-  
-  return Array.from({ length: 5 }, (_, i) => {
-    const name = `${firstNames[i]} ${lastNames[i]}`
-    return {
-      name,
-      title: titles[i % titles.length],
-      company,
-      email: generatePrimaryEmail(name, company),
-      emailConfidence: 50,
-      location: location || "San Francisco, CA",
-      industry: industry || "Technology"
-    }
-  })
 }
 
 // Generate possible email permutations

@@ -103,6 +103,7 @@ If no profiles found, return: { "leads": [] }`);
       leadsCount: run.leads.length,
       status: run.leads.length > 0 ? "complete" : "error",
       logsCount: run.logs.length,
+      leads: run.leads,
     });
   }
 }

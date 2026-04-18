@@ -199,7 +199,7 @@ function validatePlan(plan: IntelPlan, filters: Filters): IntelPlan {
 
   return {
     competitors: fixedCompetitors,
-    tasks: Array.isArray(plan.tasks) ? plan.tasks : filters.tasks || ["pricing", "jobs", "reviews", "blog"],
+    tasks: Array.isArray(plan.tasks) ? plan.tasks : filters.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"],
     maxDepth: typeof plan.maxDepth === "number" ? Math.min(plan.maxDepth, 5) : 3,
   };
 }
@@ -224,7 +224,7 @@ function getDefaultPlan(userInput: string, filters: Filters): IntelPlan {
   if (found.length > 0) {
     return {
       competitors: found,
-      tasks: filters.tasks || ["pricing", "jobs", "reviews", "blog"],
+      tasks: filters.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"],
       maxDepth: 3,
     };
   }
@@ -250,7 +250,7 @@ function getDefaultPlan(userInput: string, filters: Filters): IntelPlan {
     competitors: competitors.length > 0 ? competitors : [
       { name: "Notion", url: "https://www.notion.so" },
     ],
-    tasks: filters.tasks || ["pricing", "jobs", "reviews", "blog"],
+    tasks: filters.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"],
     maxDepth: 3,
   };
 }

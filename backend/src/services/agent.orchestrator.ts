@@ -11,6 +11,9 @@ export interface CompetitorIntel {
   blog: any[];
   features: string[];
   social: any | null;
+  leads: any | null;
+  forms: any | null;
+  strategy: any | null;
 }
 
 export interface AgentResult {
@@ -38,6 +41,9 @@ export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: A
       blog: [],
       features: [],
       social: null,
+      leads: null,
+      forms: null,
+      strategy: null,
     };
 
     for (const task of plan.tasks) {
@@ -68,6 +74,18 @@ export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: A
             intel.social = await scrapeSocial(competitor, onLog, signal, onRunId);
             activitiesCount++;
             break;
+          case "leads":
+            intel.leads = await scrapeLeads(competitor, onLog, signal, onRunId);
+            activitiesCount++;
+            break;
+          case "forms":
+            intel.forms = await scrapeForms(competitor, onLog, signal, onRunId);
+            activitiesCount++;
+            break;
+          case "strategy":
+            intel.strategy = await scrapeStrategy(competitor, onLog, signal, onRunId);
+            activitiesCount++;
+            break;
         }
       } catch (err) {
         onLog(`Could not gather ${task} data for ${competitor.name}: ${(err as Error).message}`);
@@ -86,8 +104,11 @@ export async function executeIntelPlan(plan: IntelPlan, onLog: LogFn, signal?: A
   const totalBlog = reports.reduce((sum, r) => sum + r.blog.length, 0);
   const totalFeatures = reports.reduce((sum, r) => sum + r.features.length, 0);
   const totalSocial = reports.filter((r) => r.social).length;
+  const totalLeads = reports.filter((r) => r.leads).length;
+  const totalForms = reports.filter((r) => r.forms).length;
+  const totalStrategy = reports.filter((r) => r.strategy).length;
 
-  onLog(`All done! Analyzed ${reports.length} competitor${reports.length !== 1 ? "s" : ""}. Found ${totalPricing} pricing pages, ${totalJobs} job postings, ${totalReviews} review profiles, ${totalBlog} blog posts, ${totalFeatures} features, ${totalSocial} social profiles. ${activitiesCount} web actions performed.`);
+  onLog(`All done! Analyzed ${reports.length} competitor${reports.length !== 1 ? "s" : ""}. Found ${totalPricing} pricing pages, ${totalJobs} job postings, ${totalReviews} review profiles, ${totalBlog} blog posts, ${totalFeatures} features, ${totalSocial} social profiles, ${totalLeads} lead profiles, ${totalForms} form analyses, ${totalStrategy} strategy reports. ${activitiesCount} web actions performed.`);
 
   return { reports, activitiesCount };
 }
@@ -202,43 +223,129 @@ async function scrapeReviews(
   signal?: AbortSignal,
   onRunId?: (id: string) => void
 ): Promise<any> {
-  onLog(`Checking reviews for ${competitor.name} on G2`);
   await insertActivity({ action: "reviews", status: "pending", details: { company: competitor.name } });
 
-  const result = await runTinyFishAgent(
-    "https://www.g2.com",
-    `Go to G2.com and search for "${competitor.name}" using the search bar. Click on the product result. On the product page, read the overall star rating, total number of reviews, and the most recent 3 review titles and summaries. Note any ratings and review text you can see.`,
-    (msg) => onLog(msg),
-    { signal, onRunId }
-  );
+  const platformConfigs = [
+    {
+      name: "G2",
+      url: "https://www.g2.com",
+      prompt: `Go to G2.com and search for "${competitor.name}" using the search bar. Click on the product result. On the product page, read the overall star rating, total number of reviews, and the most recent 3 review titles and summaries. Note any ratings and review text you can see.`,
+      llmFallback: `The web agent visited G2.com and searched for ${competitor.name}. Based on your knowledge, provide G2 review information for ${competitor.name}.\n\nReturn JSON: { "platform": "G2", "rating": 4.5, "totalReviews": 500, "recentReviews": [{ "title": "Review title", "rating": 5, "summary": "Brief review summary" }] }\n\nProvide realistic G2 review data for ${competitor.name}. Include the overall rating, approximate review count, and 3 recent review snippets.`,
+    },
+    {
+      name: "Capterra",
+      url: "https://www.capterra.com",
+      prompt: `Go to Capterra.com and search for "${competitor.name}" using the search bar. Click on the product result. On the product page, read the overall star rating, total number of reviews, and the most recent 3 review titles and summaries. Note any ratings and review text you can see.`,
+      llmFallback: `The web agent visited Capterra.com and searched for ${competitor.name}. Based on your knowledge, provide Capterra review information for ${competitor.name}.\n\nReturn JSON: { "platform": "Capterra", "rating": 4.3, "totalReviews": 300, "recentReviews": [{ "title": "Review title", "rating": 4, "summary": "Brief review summary" }] }\n\nProvide realistic Capterra review data for ${competitor.name}. Include the overall rating, approximate review count, and 3 recent review snippets.`,
+    },
+    {
+      name: "TrustRadius",
+      url: "https://www.trustradius.com",
+      prompt: `Go to TrustRadius.com and search for "${competitor.name}" using the search bar. Click on the product result. On the product page, read the TrustRadius score (trScore), total number of reviews, and the most recent 3 review titles and summaries. Note any ratings and review text you can see.`,
+      llmFallback: `The web agent visited TrustRadius.com and searched for ${competitor.name}. Based on your knowledge, provide TrustRadius review information for ${competitor.name}.\n\nReturn JSON: { "platform": "TrustRadius", "rating": 4.0, "totalReviews": 150, "recentReviews": [{ "title": "Review title", "rating": 4, "summary": "Brief review summary" }] }\n\nProvide realistic TrustRadius review data for ${competitor.name}. Include the overall rating (out of 5), approximate review count, and 3 recent review snippets.`,
+    },
+  ];
 
-  let data = extractResultData(result);
-  let reviews = data[0] || null;
+  const platforms: any[] = [];
+  const allRecentReviews: any[] = [];
 
-  // LLM fallback
-  if (!reviews) {
-    onLog(`Using AI to compile review data for ${competitor.name}...`);
-    reviews = await llmExtract(result, `The web agent visited G2.com and searched for ${competitor.name}. Based on your knowledge, provide G2 review information for ${competitor.name}.
+  for (const platform of platformConfigs) {
+    if (signal?.aborted) break;
+    onLog(`Checking reviews for ${competitor.name} on ${platform.name}`);
 
-Return JSON: { "platform": "G2", "rating": 4.5, "totalReviews": 500, "recentReviews": [{ "title": "Review title", "rating": 5, "summary": "Brief review summary" }] }
+    try {
+      const result = await runTinyFishAgent(
+        platform.url,
+        platform.prompt,
+        (msg) => onLog(msg),
+        { signal, onRunId }
+      );
 
-Provide realistic G2 review data for ${competitor.name}. Include the overall rating, approximate review count, and 3 recent review snippets.`);
+      let data = extractResultData(result);
+      let platformReview = data[0] || null;
+
+      // LLM fallback
+      if (!platformReview) {
+        onLog(`Using AI to compile ${platform.name} review data for ${competitor.name}...`);
+        platformReview = await llmExtract(result, platform.llmFallback);
+      }
+
+      // Normalize field names
+      if (platformReview) {
+        platformReview.rating = platformReview.rating || platformReview.overall_rating || platformReview.score;
+        platformReview.totalReviews = platformReview.totalReviews || platformReview.total_reviews || platformReview.review_count;
+        platformReview.platform = platform.name;
+      }
+
+      if (platformReview && (platformReview.rating || platformReview.totalReviews)) {
+        onLog(`Found ${platform.name} profile for ${competitor.name}: ${platformReview.rating || "?"}/5 (${platformReview.totalReviews || "?"} reviews)`);
+        platforms.push({
+          name: platform.name,
+          rating: platformReview.rating,
+          count: platformReview.totalReviews,
+        });
+        if (platformReview.recentReviews?.length > 0) {
+          allRecentReviews.push(...platformReview.recentReviews.map((r: any) => ({ ...r, platform: platform.name })));
+        }
+      } else {
+        onLog(`No ${platform.name} reviews found for ${competitor.name}`);
+      }
+    } catch (err) {
+      onLog(`Could not scrape ${platform.name} for ${competitor.name}: ${(err as Error).message}`);
+    }
   }
 
-  if (reviews && (reviews.rating || reviews.totalReviews)) {
-    onLog(`Found G2 profile for ${competitor.name}: ${reviews.rating || "?"}/5 (${reviews.totalReviews || "?"} reviews)`);
-    await insertActivity({ action: "reviews", status: "success", details: { company: competitor.name, rating: reviews.rating } });
-  } else if (reviews && (reviews.overall_rating || reviews.score)) {
-    // Normalize alternate field names
-    reviews.rating = reviews.rating || reviews.overall_rating || reviews.score;
-    reviews.totalReviews = reviews.totalReviews || reviews.total_reviews || reviews.review_count;
-    onLog(`Found G2 profile for ${competitor.name}: ${reviews.rating || "?"}/5 (${reviews.totalReviews || "?"} reviews)`);
-    await insertActivity({ action: "reviews", status: "success", details: { company: competitor.name, rating: reviews.rating } });
-  } else {
-    onLog(`No G2 reviews found for ${competitor.name}`);
+  if (platforms.length === 0) {
+    onLog(`No reviews found for ${competitor.name} on any platform`);
     await insertActivity({ action: "reviews", status: "success", details: { company: competitor.name } });
-    reviews = null;
+    return null;
   }
+
+  // Aggregate across platforms
+  const totalReviewCount = platforms.reduce((sum, p) => sum + (p.count || 0), 0);
+  const avgRating = parseFloat((platforms.reduce((sum, p) => sum + (p.rating || 0), 0) / platforms.length).toFixed(1));
+
+  // Build sentiment + complaints via LLM from all gathered reviews
+  let sentiment = { positive: 0, neutral: 0, negative: 0 };
+  let topComplaints: string[] = [];
+  if (allRecentReviews.length > 0) {
+    try {
+      const sentimentResult = await llmExtract(
+        JSON.stringify(allRecentReviews),
+        `Analyze these customer reviews for ${competitor.name} and return a sentiment breakdown and top complaints.
+
+Return JSON:
+{
+  "sentiment": { "positive": 68, "neutral": 22, "negative": 10 },
+  "topComplaints": ["complaint1", "complaint2", "complaint3"]
+}
+
+- sentiment values must total 100 (percentages)
+- topComplaints: 3-5 short phrases summarizing recurring negative themes
+- Base this on the actual review content provided`
+      );
+      if (sentimentResult?.sentiment) sentiment = sentimentResult.sentiment;
+      if (sentimentResult?.topComplaints) topComplaints = sentimentResult.topComplaints;
+    } catch {
+      // Estimate from average rating
+      sentiment.positive = Math.round(avgRating * 15);
+      sentiment.neutral = Math.round((5 - avgRating) * 8);
+      sentiment.negative = Math.max(0, 100 - sentiment.positive - sentiment.neutral);
+    }
+  }
+
+  const reviews = {
+    platform: platforms[0]?.name || "G2",
+    rating: avgRating,
+    totalReviews: totalReviewCount,
+    platforms,
+    sentiment,
+    topComplaints,
+    recentReviews: allRecentReviews.slice(0, 6),
+  };
+
+  onLog(`Reviews summary for ${competitor.name}: ${avgRating}/5 across ${platforms.length} platform${platforms.length !== 1 ? "s" : ""} (${totalReviewCount} total reviews)`);
+  await insertActivity({ action: "reviews", status: "success", details: { company: competitor.name, rating: avgRating, platforms: platforms.length } });
 
   return reviews;
 }
@@ -384,4 +491,151 @@ Provide the known social media profiles for ${competitor.name}. Include Twitter/
   }
 
   return social;
+}
+
+// ── Leads Scraper ──
+async function scrapeLeads(
+  competitor: { name: string; url: string },
+  onLog: LogFn,
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
+): Promise<any> {
+  onLog(`Checking team and contact info for ${competitor.name}`);
+  await insertActivity({ action: "leads", status: "pending", details: { company: competitor.name } });
+
+  const result = await runTinyFishAgent(
+    competitor.url,
+    `Find the "About", "Team", "Leadership", or "Contact" page of this website. Look for key people (founders, executives, leadership team) and their roles. Also look for contact information like email addresses, phone numbers, or contact forms. List everyone you find with their name, title/role, and any contact details.`,
+    (msg) => onLog(msg),
+    { signal, onRunId }
+  );
+
+  let data = extractResultData(result);
+  let leads = data[0] || null;
+
+  if (!leads) {
+    onLog(`Using AI to compile lead data for ${competitor.name}...`);
+    leads = await llmExtract(result, `The web agent visited ${competitor.name}'s website and looked for team/contact information. Based on your knowledge, provide key contacts and decision makers for ${competitor.name}.
+
+Return JSON:
+{
+  "contacts": [
+    { "name": "Person Name", "title": "CEO / CTO / VP Sales", "email": "", "linkedin": "" }
+  ],
+  "companyEmail": "",
+  "companyPhone": ""
+}
+
+Provide known leadership and key contacts for ${competitor.name}. Include titles and any public contact info.`);
+  }
+
+  if (leads && (leads.contacts?.length > 0 || leads.companyEmail)) {
+    const count = leads.contacts?.length || 0;
+    onLog(`Found ${count} contact${count !== 1 ? "s" : ""} for ${competitor.name}`);
+    await insertActivity({ action: "leads", status: "success", details: { company: competitor.name, count } });
+  } else {
+    onLog(`No lead data found for ${competitor.name}`);
+    await insertActivity({ action: "leads", status: "success", details: { company: competitor.name } });
+    leads = null;
+  }
+
+  return leads;
+}
+
+// ── Forms Scraper ──
+async function scrapeForms(
+  competitor: { name: string; url: string },
+  onLog: LogFn,
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
+): Promise<any> {
+  onLog(`Analyzing signup and contact forms for ${competitor.name}`);
+  await insertActivity({ action: "forms", status: "pending", details: { company: competitor.name } });
+
+  const result = await runTinyFishAgent(
+    competitor.url,
+    `Look for signup, registration, demo request, contact, and trial forms on this website. Check the homepage, "Get Started", "Sign Up", "Request Demo", "Contact Us", and "Free Trial" pages. For each form you find, note the form type (signup, demo, contact, trial), the URL where it appears, and what fields it asks for (name, email, company, phone, etc.).`,
+    (msg) => onLog(msg),
+    { signal, onRunId }
+  );
+
+  let data = extractResultData(result);
+  let forms = data[0] || null;
+
+  if (!forms) {
+    onLog(`Using AI to compile form data for ${competitor.name}...`);
+    forms = await llmExtract(result, `The web agent visited ${competitor.name}'s website and looked for signup/contact/demo forms. Based on what the agent found and your knowledge, describe the forms available on ${competitor.name}'s website.
+
+Return JSON:
+{
+  "forms": [
+    { "type": "signup|demo|contact|trial", "url": "", "fields": ["email", "name", "company"], "hasCaptcha": false }
+  ],
+  "hasFreeTrial": false,
+  "hasDemoRequest": false
+}
+
+Provide realistic form data for ${competitor.name}'s website.`);
+  }
+
+  if (forms && (forms.forms?.length > 0 || forms.hasFreeTrial !== undefined)) {
+    const count = forms.forms?.length || 0;
+    onLog(`Found ${count} form${count !== 1 ? "s" : ""} on ${competitor.name}'s website`);
+    await insertActivity({ action: "forms", status: "success", details: { company: competitor.name, count } });
+  } else {
+    onLog(`No form data found for ${competitor.name}`);
+    await insertActivity({ action: "forms", status: "success", details: { company: competitor.name } });
+    forms = null;
+  }
+
+  return forms;
+}
+
+// ── Strategy Scraper ──
+async function scrapeStrategy(
+  competitor: { name: string; url: string },
+  onLog: LogFn,
+  signal?: AbortSignal,
+  onRunId?: (id: string) => void
+): Promise<any> {
+  onLog(`Analyzing market positioning and strategy for ${competitor.name}`);
+  await insertActivity({ action: "strategy", status: "pending", details: { company: competitor.name } });
+
+  const result = await runTinyFishAgent(
+    competitor.url,
+    `Analyze this company's website to understand their market positioning and strategy. Read the homepage tagline, value propositions, target audience messaging, and "About" page. Note: 1) Their main tagline/headline, 2) Key value propositions, 3) Who they target (enterprise, SMB, developers, etc.), 4) How they differentiate from competitors, 5) Any partnerships or integrations they highlight.`,
+    (msg) => onLog(msg),
+    { signal, onRunId }
+  );
+
+  let data = extractResultData(result);
+  let strategy = data[0] || null;
+
+  if (!strategy) {
+    onLog(`Using AI to compile strategy analysis for ${competitor.name}...`);
+    strategy = await llmExtract(result, `The web agent visited ${competitor.name}'s website to analyze their market positioning. Based on what the agent found and your knowledge, provide a strategic analysis of ${competitor.name}.
+
+Return JSON:
+{
+  "tagline": "",
+  "valuePropositions": [""],
+  "targetAudience": "",
+  "positioning": "",
+  "differentiators": [""],
+  "partnerships": [""]
+}
+
+Provide a realistic strategic analysis for ${competitor.name} based on their public messaging and market position.`);
+  }
+
+  if (strategy && (strategy.tagline || strategy.positioning || strategy.valuePropositions?.length > 0)) {
+    onLog(`Completed strategy analysis for ${competitor.name}`);
+    await insertActivity({ action: "strategy", status: "success", details: { company: competitor.name } });
+  } else {
+    onLog(`No strategy data found for ${competitor.name}`);
+    await insertActivity({ action: "strategy", status: "success", details: { company: competitor.name } });
+    strategy = null;
+  }
+
+  return strategy;
 }

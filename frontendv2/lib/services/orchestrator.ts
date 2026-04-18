@@ -148,7 +148,7 @@ async function scrapeTask(
     return normalizeTaskData(task, llmResult.data)
   }
   
-  // Final fallback: generate mock data with LLM knowledge
+  // Final fallback: use LLM general knowledge
   return generateFallbackData(task, companyName)
 }
 

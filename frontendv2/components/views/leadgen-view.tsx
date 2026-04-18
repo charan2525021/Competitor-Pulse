@@ -30,13 +30,17 @@ import {
   Megaphone,
   User,
   Eye,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import type { Lead } from "@/lib/types"
 import {
   startLeadSearch, createLeadLogStream, cancelLeadSearch,
   saveSenderIdentity, getSenderIdentities, deleteSenderApi,
   createCampaignApi, getCampaignsApi, deleteCampaignApi, sendCampaignApi, getCampaignLogsApi,
+  loadCollection,
 } from "@/lib/api"
+import { saveLead, addHistoryItem, getLeads } from "@/lib/storage"
 
 interface LogEntry {
   id: string
@@ -72,6 +76,10 @@ export function LeadGenView() {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
+  const [historyItems, setHistoryItems] = useState<any[]>([])
+  const [historyExpanded, setHistoryExpanded] = useState(false)
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
+  const prevSearchingRef = useRef(false)
 
   // Outreach state
   const [activeTab, setActiveTab] = useState<"search" | "outreach" | "campaigns">("search")
@@ -82,6 +90,12 @@ export function LeadGenView() {
   const [newCampaign, setNewCampaign] = useState({ name: "", subject: "", body: "", senderId: "" })
   const [showCampaignForm, setShowCampaignForm] = useState(false)
 
+  // Load previously saved leads from localStorage on mount
+  useEffect(() => {
+    const saved = getLeads()
+    if (saved.length > 0) setLeads(saved)
+  }, [])
+
   useEffect(() => {
     if (activeTab === "outreach") {
       getSenderIdentities().then(res => res.success && setSenders(res.senders || []))
@@ -91,11 +105,30 @@ export function LeadGenView() {
     }
   }, [activeTab])
 
+  // Load lead gen history on mount
+  useEffect(() => {
+    loadCollection("leadgenHistory").then(data => {
+      if (Array.isArray(data)) setHistoryItems(data.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()))
+    })
+  }, [])
+
+  // Refresh history when search finishes
+  useEffect(() => {
+    if (prevSearchingRef.current && !isSearching) {
+      loadCollection("leadgenHistory").then(data => {
+        if (Array.isArray(data)) setHistoryItems(data.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()))
+      })
+    }
+    prevSearchingRef.current = isSearching
+  }, [isSearching])
+
   const handleSearch = async () => {
     if (!searchQuery) return
     setIsSearching(true)
     setLogs([])
     setLeads([])
+
+    const currentQuery = searchQuery
 
     try {
       const res = await startLeadSearch(searchQuery)
@@ -116,17 +149,43 @@ export function LeadGenView() {
           (resultLeads) => {
             setIsSearching(false)
             if (resultLeads && resultLeads.length > 0) {
-              setLeads(resultLeads.map((l: any, i: number) => ({
+              const mapped = resultLeads.map((l: any, i: number) => ({
                 id: l.id || String(i + 1),
                 name: l.name || "Unknown",
-                title: l.title || "",
+                title: l.title || l.role || "",
                 company: l.company || "",
                 email: l.email || "",
                 emailConfidence: l.emailConfidence || 0,
                 linkedinUrl: l.linkedinUrl || "",
                 location: l.location || "",
                 industry: l.industry || "",
-              })))
+              }))
+              setLeads(mapped)
+
+              // Persist each lead to localStorage
+              mapped.forEach((lead: Lead) => saveLead(lead))
+
+              // Record history entry locally
+              addHistoryItem({
+                id: `hist-${Date.now()}`,
+                type: "lead",
+                action: "Lead Generation",
+                target: currentQuery,
+                timestamp: new Date().toISOString(),
+                status: "success",
+                details: `Found ${mapped.length} leads`,
+              })
+            } else {
+              // Record failed/empty search
+              addHistoryItem({
+                id: `hist-${Date.now()}`,
+                type: "lead",
+                action: "Lead Generation",
+                target: currentQuery,
+                timestamp: new Date().toISOString(),
+                status: "failed",
+                details: "No leads found",
+              })
             }
           }
         )
@@ -140,6 +199,16 @@ export function LeadGenView() {
         message: `Search failed: ${err instanceof Error ? err.message : "Unknown error"}`,
         timestamp: new Date().toLocaleTimeString(),
       }])
+      // Record failed search in history
+      addHistoryItem({
+        id: `hist-${Date.now()}`,
+        type: "lead",
+        action: "Lead Generation",
+        target: currentQuery,
+        timestamp: new Date().toISOString(),
+        status: "failed",
+        details: `Search failed`,
+      })
     }
   }
 
@@ -375,6 +444,136 @@ export function LeadGenView() {
               </Card>
             </ScrollReveal>
           )}
+
+          {/* Collapsible History */}
+          <Card>
+            <button
+              onClick={() => setHistoryExpanded(!historyExpanded)}
+              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Search History</span>
+                {historyItems.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">{historyItems.length}</Badge>
+                )}
+              </div>
+              {historyExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {historyExpanded && (
+              <CardContent className="pt-0 pb-4">
+                {historyItems.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No search history yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {historyItems.map((item: any) => {
+                      const isOpen = expandedHistoryId === item.id
+                      const leads: any[] = item.leads || []
+                      return (
+                        <div key={item.id} className="rounded-lg border bg-card overflow-hidden">
+                          <button
+                            onClick={() => setExpandedHistoryId(isOpen ? null : item.id)}
+                            className="w-full flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors"
+                          >
+                            {item.status === "complete" ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                            ) : (
+                              <Clock className="h-4 w-4 text-rose-500 shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0 text-left">
+                              <p className="font-medium text-sm truncate">{item.query}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(item.timestamp).toLocaleString()} &middot; {item.leadsCount || leads.length || 0} leads found
+                              </p>
+                            </div>
+                            <Badge variant="outline" className={cn(
+                              "text-xs shrink-0",
+                              item.status === "complete" ? "text-emerald-500 border-emerald-500/30" : "text-rose-500 border-rose-500/30"
+                            )}>
+                              {item.status}
+                            </Badge>
+                            {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                          </button>
+
+                          {isOpen && leads.length > 0 && (
+                            <div className="px-3 pb-3">
+                              <div className="rounded-lg border overflow-hidden">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="bg-muted/50 text-left">
+                                      <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Name</th>
+                                      <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Company</th>
+                                      <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Role</th>
+                                      <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">Email</th>
+                                      <th className="px-3 py-2 text-xs font-semibold text-muted-foreground">LinkedIn</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {leads.map((lead: any, li: number) => (
+                                      <tr key={li} className="border-t hover:bg-muted/30 transition-colors">
+                                        <td className="px-3 py-2 font-medium">
+                                          <div className="flex items-center gap-2">
+                                            <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <span className="truncate max-w-[120px]">{lead.name || "—"}</span>
+                                          </div>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <div className="flex items-center gap-1.5">
+                                            <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                                            <span className="truncate max-w-[100px] text-muted-foreground">{lead.company || "—"}</span>
+                                          </div>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <Badge variant="secondary" className="text-[10px]">{lead.title || lead.role || "—"}</Badge>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          {lead.email ? (
+                                            <a href={`mailto:${lead.email}`} className="text-xs text-primary hover:underline flex items-center gap-1">
+                                              <Mail className="h-3 w-3 shrink-0" />
+                                              <span className="truncate max-w-[140px]">{lead.email}</span>
+                                            </a>
+                                          ) : lead.possibleEmails?.length > 0 ? (
+                                            <span className="text-xs text-muted-foreground">{lead.possibleEmails[0]}</span>
+                                          ) : (
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                          )}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          {lead.linkedinUrl ? (
+                                            <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                                              className="text-xs text-primary hover:underline flex items-center gap-1">
+                                              <Linkedin className="h-3 w-3 shrink-0" />
+                                              <span>Profile</span>
+                                              <ExternalLink className="h-2.5 w-2.5" />
+                                            </a>
+                                          ) : (
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+
+                          {isOpen && leads.length === 0 && (
+                            <div className="px-3 pb-3 text-center py-4 text-muted-foreground text-xs">
+                              No lead data available for this search
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            )}
+          </Card>
         </>
       )}
 

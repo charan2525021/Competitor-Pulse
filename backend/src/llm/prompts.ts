@@ -6,7 +6,7 @@ export function buildPlannerPrompt(
 
 User Request: "${userInput}"
 Filters:
-- Tasks to perform: ${(filters.tasks || ["pricing", "jobs", "reviews", "blog"]).join(", ")}
+- Tasks to perform: ${(filters.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"]).join(", ")}
 - Max competitors: ${filters.maxCompetitors ?? 5}
 
 Return ONLY valid JSON (no markdown, no explanation):
@@ -14,7 +14,7 @@ Return ONLY valid JSON (no markdown, no explanation):
   "competitors": [
     { "name": "Company Name", "url": "https://company.com" }
   ],
-  "tasks": ["pricing", "jobs", "reviews", "blog"],
+  "tasks": ${JSON.stringify(filters.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"])},
   "maxDepth": 3
 }
 
@@ -25,7 +25,7 @@ CRITICAL RULES:
 - Examples of WRONG urls: "https://www.google.com/search?q=...", "https://google.com/..."
 - NEVER use google.com URLs. Always use the company's own domain.
 - If user gives company names, use those. If user gives an industry, pick top known competitors in that space.
-- tasks must be from: pricing, jobs, reviews, blog, social, features
+- tasks must be from: pricing, jobs, reviews, blog, features, social, leads, forms, strategy
 - Only include tasks from the filter list above
 - maxDepth: how many pages deep to go per task (1-5)
 - Return at most ${filters.maxCompetitors ?? 5} competitors`;

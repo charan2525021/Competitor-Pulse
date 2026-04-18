@@ -24,9 +24,13 @@ import {
   Loader2,
   Minus,
   Plus,
+  Users,
+  ClipboardList,
+  Target,
 } from "lucide-react"
-import { startAgent, createLogStream, cancelAgent, fetchRunReports } from "@/lib/api"
+import { startAgent, createLogStream, cancelAgent, fetchRunReports, loadCollection } from "@/lib/api"
 import { LiveLogs } from "@/components/live-logs"
+import { ChevronDown, ChevronUp, ExternalLink, Hash, MapPin, FileText, Cpu } from "lucide-react"
 
 interface AgentLog {
   id: string
@@ -63,12 +67,16 @@ export function AgentView() {
   const [phase, setPhase] = React.useState<AgentPhase>("idle")
   const [logs, setLogs] = React.useState<AgentLog[]>([])
   const [runId, setRunId] = React.useState<string | null>(null)
-  const [selectedDimensions, setSelectedDimensions] = React.useState<string[]>(["all"])
+  const [selectedDimensions, setSelectedDimensions] = React.useState<string[]>([])
   const [maxCompetitors, setMaxCompetitors] = React.useState(5)
   const [scanProgress, setScanProgress] = React.useState(0)
   const [scanText, setScanText] = React.useState("")
   const esRef = React.useRef<EventSource | null>(null)
   const scanTimersRef = React.useRef<ReturnType<typeof setTimeout>[]>([])
+  const [historyItems, setHistoryItems] = React.useState<any[]>([])
+  const [historyExpanded, setHistoryExpanded] = React.useState(false)
+  const [expandedHistoryId, setExpandedHistoryId] = React.useState<string | null>(null)
+  const prevRunningRef = React.useRef(false)
 
   const isRunning = phase === "scanning" || phase === "running"
 
@@ -88,7 +96,7 @@ export function AgentView() {
     let filters: Record<string, any> = {}
     try { filters = JSON.parse(localStorage.getItem("cp_filters") || "{}") } catch {}
 
-    if (!selectedDimensions.includes("all")) {
+    if (selectedDimensions.length > 0 && !selectedDimensions.includes("all")) {
       filters.tasks = selectedDimensions
     }
     filters.maxCompetitors = maxCompetitors
@@ -200,6 +208,22 @@ export function AgentView() {
     return () => { clearScanTimers(); esRef.current?.close() }
   }, [])
 
+  // Load agent history on mount
+  React.useEffect(() => {
+    loadCollection("agentHistory").then(data => {
+      if (Array.isArray(data)) setHistoryItems(data.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()))
+    })
+  }, [])
+
+  // Refresh history when a run finishes
+  React.useEffect(() => {
+    if (prevRunningRef.current && !isRunning) {
+      loadCollection("agentHistory").then(data => {
+        if (Array.isArray(data)) setHistoryItems(data.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()))
+      })
+    }
+    prevRunningRef.current = isRunning
+  }, [isRunning])
 
 
   return (
@@ -235,14 +259,14 @@ export function AgentView() {
                     key={dim.id}
                     onClick={() => {
                       if (dim.id === "all") {
-                        setSelectedDimensions(["all"])
+                        setSelectedDimensions(prev => prev.includes("all") ? [] : ["all"])
                       } else {
                         setSelectedDimensions(prev => {
                           const without = prev.filter(d => d !== "all")
                           const next = without.includes(dim.id)
                             ? without.filter(d => d !== dim.id)
                             : [...without, dim.id]
-                          return next.length === 0 ? ["all"] : next
+                          return next
                         })
                       }
                     }}
@@ -395,6 +419,317 @@ export function AgentView() {
           </Card>
         </div>
       )}
+
+      {/* Collapsible History */}
+      <Card>
+        <button
+          onClick={() => setHistoryExpanded(!historyExpanded)}
+          className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold">Analysis History</span>
+            {historyItems.length > 0 && (
+              <Badge variant="secondary" className="text-xs">{historyItems.length}</Badge>
+            )}
+          </div>
+          {historyExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+        {historyExpanded && (
+          <CardContent className="pt-0 pb-4">
+            {historyItems.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No analysis history yet</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {historyItems.map((item: any) => {
+                  const isOpen = expandedHistoryId === item.id
+                  const reports: any[] = item.reports || []
+                  return (
+                    <div key={item.id} className="rounded-lg border bg-card overflow-hidden">
+                      <button
+                        onClick={() => setExpandedHistoryId(isOpen ? null : item.id)}
+                        className="w-full flex items-center gap-4 p-3 hover:bg-muted/50 transition-colors"
+                      >
+                        {item.status === "complete" ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Clock className="h-4 w-4 text-rose-500 shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="font-medium text-sm truncate">{item.prompt}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(item.timestamp).toLocaleString()} &middot; {item.competitorsCount || 0} competitors
+                          </p>
+                        </div>
+                        <Badge variant="outline" className={cn(
+                          "text-xs shrink-0",
+                          item.status === "complete" ? "text-emerald-500 border-emerald-500/30" : "text-rose-500 border-rose-500/30"
+                        )}>
+                          {item.status}
+                        </Badge>
+                        {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                      </button>
+
+                      {isOpen && reports.length > 0 && (
+                        <div className="px-3 pb-3 space-y-4">
+                          {reports.map((report: any, ri: number) => {
+                            const planCount = report.pricing?.plans?.length || 0
+                            const jobCount = report.jobs?.length || 0
+                            const blogCount = report.blog?.length || 0
+                            const featureCount = report.features?.length || 0
+                            const socialCount = report.social?.profiles?.length || 0
+                            const leadsCount = report.leads?.contacts?.length || 0
+                            const formsCount = report.forms?.forms?.length || 0
+                            const hasStrategy = !!report.strategy
+                            return (
+                              <div key={ri} className="rounded-xl border bg-muted/30 overflow-hidden">
+                                {/* Competitor Header */}
+                                <div className="flex items-center gap-3 px-4 py-3 border-b">
+                                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary/10">
+                                    <Globe className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="text-sm font-bold truncate">{report.company}</h4>
+                                    {report.url && (
+                                      <a href={report.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                        {report.url} <ExternalLink className="h-2.5 w-2.5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-wrap justify-end">
+                                    {planCount > 0 && <Badge variant="secondary" className="text-[10px] gap-1"><DollarSign className="h-2.5 w-2.5" />{planCount} plans</Badge>}
+                                    {jobCount > 0 && <Badge variant="secondary" className="text-[10px] gap-1"><Briefcase className="h-2.5 w-2.5" />{jobCount} jobs</Badge>}
+                                    {report.reviews?.rating && <Badge variant="secondary" className="text-[10px] gap-1"><Star className="h-2.5 w-2.5" />{report.reviews.rating}/5</Badge>}
+                                    {featureCount > 0 && <Badge variant="secondary" className="text-[10px] gap-1"><Zap className="h-2.5 w-2.5" />{featureCount}</Badge>}
+                                    {leadsCount > 0 && <Badge variant="secondary" className="text-[10px] gap-1"><Users className="h-2.5 w-2.5" />{leadsCount} leads</Badge>}
+                                    {formsCount > 0 && <Badge variant="secondary" className="text-[10px] gap-1"><ClipboardList className="h-2.5 w-2.5" />{formsCount} forms</Badge>}
+                                    {hasStrategy && <Badge variant="secondary" className="text-[10px] gap-1"><Target className="h-2.5 w-2.5" />Strategy</Badge>}
+                                  </div>
+                                </div>
+
+                                <div className="p-4 space-y-4">
+                                  {/* Pricing */}
+                                  {report.pricing?.plans?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pricing Plans</span>
+                                      </div>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        {report.pricing.plans.map((plan: any, pi: number) => (
+                                          <div key={pi} className="rounded-lg p-3 bg-background border">
+                                            <div className="text-sm font-bold">{plan.name}</div>
+                                            <div className="text-lg font-extrabold text-emerald-500">{plan.price}</div>
+                                            {plan.period && <div className="text-[10px] text-muted-foreground">{plan.period}</div>}
+                                            {plan.features?.slice(0, 3).map((f: string, fi: number) => (
+                                              <div key={fi} className="text-xs mt-1 flex items-start gap-1 text-muted-foreground">
+                                                <span className="text-emerald-500 mt-0.5">✓</span>
+                                                <span className="line-clamp-1">{f}</span>
+                                              </div>
+                                            ))}
+                                            {plan.features?.length > 3 && <div className="text-[10px] text-muted-foreground mt-1">+{plan.features.length - 3} more</div>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Jobs */}
+                                  {report.jobs?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Briefcase className="h-3.5 w-3.5 text-blue-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open Positions</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {report.jobs.slice(0, 6).map((job: any, ji: number) => (
+                                          <div key={ji} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border text-sm">
+                                            <span className="flex-1 font-medium truncate">{job.title}</span>
+                                            {job.department && <Badge variant="outline" className="text-[10px]">{job.department}</Badge>}
+                                            {job.location && <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{job.location}</span>}
+                                          </div>
+                                        ))}
+                                        {report.jobs.length > 6 && <div className="text-xs text-center py-1 text-muted-foreground">+{report.jobs.length - 6} more</div>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Reviews */}
+                                  {report.reviews && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Star className="h-3.5 w-3.5 text-amber-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Reviews — {report.reviews.platform || "G2"}</span>
+                                      </div>
+                                      <div className="flex items-center gap-3 p-2 rounded-lg bg-background border">
+                                        {report.reviews.rating && <span className="text-2xl font-extrabold text-amber-500">{report.reviews.rating}</span>}
+                                        <div className="flex gap-0.5">
+                                          {[1, 2, 3, 4, 5].map((s) => (
+                                            <Star key={s} className={cn("h-3.5 w-3.5", s <= Math.round(report.reviews.rating || 0) ? "text-amber-500 fill-amber-500" : "text-muted-foreground")} />
+                                          ))}
+                                        </div>
+                                        {report.reviews.totalReviews && <span className="text-xs text-muted-foreground">{report.reviews.totalReviews} reviews</span>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Blog */}
+                                  {report.blog?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Newspaper className="h-3.5 w-3.5 text-violet-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recent Posts</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {report.blog.slice(0, 4).map((post: any, bi: number) => (
+                                          <div key={bi} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border text-sm">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                                            <span className="flex-1 font-medium truncate">{post.title}</span>
+                                            {post.date && <span className="text-[10px] text-muted-foreground shrink-0">{post.date}</span>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Features */}
+                                  {report.features?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Zap className="h-3.5 w-3.5 text-cyan-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key Features</span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {report.features.map((f: string, fi: number) => (
+                                          <span key={fi} className="text-xs px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 font-medium">{f}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Social */}
+                                  {report.social?.profiles?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Share2 className="h-3.5 w-3.5 text-pink-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Social Media</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-1.5">
+                                        {report.social.profiles.map((profile: any, si: number) => (
+                                          <a key={si} href={profile.url} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border text-sm hover:border-pink-500/30 transition-colors no-underline">
+                                            <Share2 className="h-3 w-3 text-pink-500 shrink-0" />
+                                            <span className="font-medium truncate">{profile.platform}</span>
+                                            {(profile.followers || profile.subscribers) && (
+                                              <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{profile.followers || profile.subscribers}</span>
+                                            )}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Leads */}
+                                  {report.leads?.contacts?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Users className="h-3.5 w-3.5 text-orange-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key Contacts</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {report.leads.contacts.slice(0, 6).map((contact: any, li: number) => (
+                                          <div key={li} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border text-sm">
+                                            <Users className="h-3 w-3 text-orange-500 shrink-0" />
+                                            <span className="font-medium truncate">{contact.name}</span>
+                                            {contact.title && <Badge variant="outline" className="text-[10px]">{contact.title}</Badge>}
+                                          </div>
+                                        ))}
+                                        {report.leads.contacts.length > 6 && <div className="text-xs text-center py-1 text-muted-foreground">+{report.leads.contacts.length - 6} more</div>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Forms */}
+                                  {report.forms?.forms?.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <ClipboardList className="h-3.5 w-3.5 text-teal-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Forms</span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {report.forms.forms.map((form: any, fi: number) => (
+                                          <div key={fi} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-background border text-sm">
+                                            <ClipboardList className="h-3 w-3 text-teal-500 shrink-0" />
+                                            <span className="font-medium capitalize">{form.type}</span>
+                                            {form.fields && <span className="text-[10px] text-muted-foreground ml-auto">{form.fields.length} fields</span>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Strategy */}
+                                  {report.strategy && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Target className="h-3.5 w-3.5 text-rose-500" />
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Strategy</span>
+                                      </div>
+                                      <div className="rounded-lg p-3 bg-background border space-y-2">
+                                        {report.strategy.tagline && (
+                                          <div>
+                                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Tagline</div>
+                                            <div className="text-sm font-medium">{report.strategy.tagline}</div>
+                                          </div>
+                                        )}
+                                        {report.strategy.targetAudience && (
+                                          <div>
+                                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Target Audience</div>
+                                            <div className="text-sm">{report.strategy.targetAudience}</div>
+                                          </div>
+                                        )}
+                                        {report.strategy.positioning && (
+                                          <div>
+                                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Positioning</div>
+                                            <div className="text-sm">{report.strategy.positioning}</div>
+                                          </div>
+                                        )}
+                                        {report.strategy.differentiators?.length > 0 && (
+                                          <div>
+                                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Differentiators</div>
+                                            <div className="flex flex-wrap gap-1">
+                                              {report.strategy.differentiators.map((d: string, di: number) => (
+                                                <span key={di} className="text-xs px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20">{d}</span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {isOpen && reports.length === 0 && (
+                        <div className="px-3 pb-3 text-center py-4 text-muted-foreground text-xs">
+                          No report data available for this run
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
     </div>
   )
 }

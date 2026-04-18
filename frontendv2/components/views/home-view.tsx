@@ -79,7 +79,7 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
   const [phase, setPhase] = useState<HomePhase>("idle")
   const [scanProgress, setScanProgress] = useState(0)
   const [scanText, setScanText] = useState("")
-  const [selectedDimensions, setSelectedDimensions] = useState<string[]>(["all"])
+  const [selectedDimensions, setSelectedDimensions] = useState<string[]>([])
   const [maxCompetitors, setMaxCompetitors] = useState(5)
   const { logs, isRunning, startAnalysis, activeRunId } = useAgentLogs()
   const scanTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -116,24 +116,20 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
 
   const toggleDimension = (id: string) => {
     if (id === "all") {
-      setSelectedDimensions(["all"])
+      setSelectedDimensions(prev => prev.includes("all") ? [] : ["all"])
     } else {
       setSelectedDimensions(prev => {
         const without = prev.filter(d => d !== "all")
         const next = without.includes(id)
           ? without.filter(d => d !== id)
           : [...without, id]
-        return next.length === 0 ? ["all"] : next
+        return next
       })
     }
   }
 
   const handleSubmit = async (url: string) => {
-    if (selectedDimensions.includes("all")) {
-      // "All" means no filter — send all tasks
-    } else if (selectedDimensions.length === 0) {
-      return
-    }
+    // Empty or "all" means no filter — send all tasks
 
     setScanProgress(0)
     setScanText("")
@@ -150,7 +146,7 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
     })
 
     const runId = await startAnalysis(url, {
-      tasks: selectedDimensions.includes("all") ? undefined : selectedDimensions,
+      tasks: (selectedDimensions.length === 0 || selectedDimensions.includes("all")) ? undefined : selectedDimensions,
       maxCompetitors,
     })
 
@@ -194,11 +190,39 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
     },
   ]
 
-  const recentAnalyses = [
-    { domain: "stripe.com", time: "2 hours ago", status: "complete" },
-    { domain: "notion.so", time: "5 hours ago", status: "complete" },
-    { domain: "linear.app", time: "1 day ago", status: "complete" },
-  ]
+  const [recentAnalyses, setRecentAnalyses] = useState<
+    { domain: string; time: string; status: string }[]
+  >([])
+
+  useEffect(() => {
+    async function loadRecent() {
+      try {
+        const res = await fetch("/api/history")
+        const data = await res.json()
+        if (data.items?.length) {
+          setRecentAnalyses(
+            data.items.slice(0, 5).map((item: any) => ({
+              domain: item.target || "Unknown",
+              time: formatRelativeTime(item.timestamp),
+              status: item.status === "success" ? "complete" : item.status,
+            }))
+          )
+        }
+      } catch {}
+    }
+    loadRecent()
+  }, [])
+
+  function formatRelativeTime(ts: string): string {
+    const diff = Date.now() - new Date(ts).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return "just now"
+    if (mins < 60) return `${mins}m ago`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h ago`
+    const days = Math.floor(hrs / 24)
+    return `${days}d ago`
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -394,7 +418,7 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
       </div>
 
       {/* Recent Analyses */}
-      {!isRunning && logs.length === 0 && (
+      {!isRunning && logs.length === 0 && recentAnalyses.length > 0 && (
         <div className="border-t border-border bg-muted/30 px-6 py-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center justify-between mb-3">
@@ -407,10 +431,10 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
               </button>
             </div>
             <div className="flex flex-wrap gap-3">
-              {recentAnalyses.map((analysis) => (
+              {recentAnalyses.map((analysis, idx) => (
                 <button
-                  key={analysis.domain}
-                  onClick={() => handleSubmit(`https://${analysis.domain}`)}
+                  key={`${analysis.domain}-${idx}`}
+                  onClick={() => handleSubmit(analysis.domain)}
                   className="flex items-center gap-2 rounded-full bg-card px-4 py-2 text-sm border border-border hover:border-primary/30 transition-colors"
                 >
                   <Globe className="h-4 w-4 text-muted-foreground" />
@@ -418,7 +442,11 @@ export function HomeView({ onAnalysisComplete, onNavigate }: HomeViewProps) {
                   <span className="text-muted-foreground">•</span>
                   <Clock className="h-3 w-3 text-muted-foreground" />
                   <span className="text-muted-foreground text-xs">{analysis.time}</span>
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                  {analysis.status === "complete" ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                  ) : (
+                    <Clock className="h-3 w-3 text-amber-500" />
+                  )}
                 </button>
               ))}
             </div>

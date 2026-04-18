@@ -60,7 +60,7 @@ export async function startAgent(req: Request, res: Response) {
           try { name = new URL(url).hostname.replace("www.", "").split(".")[0]; name = name.charAt(0).toUpperCase() + name.slice(1); } catch {}
           return { name, url };
         }),
-        tasks: filters?.tasks || ["pricing", "jobs", "reviews", "blog"],
+        tasks: filters?.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"],
         maxDepth: 3,
       };
     } else if (filters?.maxCompetitors === 0) {
@@ -72,7 +72,7 @@ export async function startAgent(req: Request, res: Response) {
       try { name = new URL(targetUrl).hostname.replace("www.", "").split(".")[0]; name = name.charAt(0).toUpperCase() + name.slice(1); } catch {}
       plan = {
         competitors: [{ name, url: targetUrl }],
-        tasks: filters?.tasks || ["pricing", "jobs", "reviews", "blog"],
+        tasks: filters?.tasks || ["pricing", "jobs", "reviews", "blog", "features", "social", "leads", "forms", "strategy"],
         maxDepth: 3,
       };
     } else {
@@ -99,14 +99,38 @@ export async function startAgent(req: Request, res: Response) {
   } finally {
     run.done = true;
     // Persist to history
+    const ts = new Date().toISOString();
     appendToStore("agentHistory", {
       id: runId,
       prompt,
-      timestamp: new Date().toISOString(),
+      timestamp: ts,
       competitorsCount: run.reports.length,
       logsCount: run.logs.length,
       status: run.reports.length > 0 ? "complete" : "error",
+      reports: run.reports,
     });
+
+    // Also persist each report dimension into the intel collection
+    for (const report of run.reports) {
+      const base = { company: report.company, url: report.url, scanDate: ts, runId };
+      if (report.pricing && (report.pricing.plans?.length > 0 || Object.keys(report.pricing).length > 0))
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-pricing`, type: "pricing", data: report.pricing });
+      const jobs = Array.isArray(report.jobs) ? report.jobs : [];
+      if (jobs.length > 0)
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-jobs`, type: "jobs", data: jobs });
+      if (report.reviews && Object.keys(report.reviews).length > 0)
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-reviews`, type: "reviews", data: report.reviews });
+      const blog = Array.isArray(report.blog) ? report.blog : [];
+      if (blog.length > 0)
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-blog`, type: "blog", data: blog });
+      const feat = Array.isArray(report.features) ? report.features : [];
+      if (feat.length > 0)
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-features`, type: "features", data: feat });
+      if (report.social && Object.keys(report.social).length > 0)
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-social`, type: "social", data: report.social });
+      if (report.strategy && Object.keys(report.strategy).length > 0)
+        appendToStore("intel", { ...base, id: `${runId}-${report.company}-strategy`, type: "strategy", data: report.strategy });
+    }
   }
 }
 

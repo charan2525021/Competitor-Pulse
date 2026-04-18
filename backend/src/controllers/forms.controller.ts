@@ -178,6 +178,7 @@ If unclear, make your best assessment.`);
       timestamp: new Date().toISOString(),
       status: run.result?.success ? "complete" : "error",
       logsCount: run.logs.length,
+      result: run.result,
     });
   }
 }

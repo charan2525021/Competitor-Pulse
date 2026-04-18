@@ -54,6 +54,7 @@ export async function runStrategy(req: Request, res: Response) {
     timestamp: new Date().toISOString(),
     status: run.result?.error ? "error" : "complete",
     logsCount: run.logs.length,
+    result: run.result,
   });
 }
 

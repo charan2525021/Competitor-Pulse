@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const BACKEND_URL = "http://localhost:3001/api/store"
+
 interface HistoryItem {
   id: string
   type: "analysis" | "lead" | "form" | "intel"
@@ -10,81 +12,92 @@ interface HistoryItem {
   details?: string
 }
 
-// Mock history data
-const mockHistory: HistoryItem[] = [
-  {
-    id: "hist-1",
-    type: "analysis",
-    action: "Competitor Analysis",
-    target: "acme.com",
-    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Extracted pricing, jobs, and reviews data"
-  },
-  {
-    id: "hist-2",
-    type: "lead",
-    action: "Lead Generation",
-    target: "VP Sales at SaaS companies",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Found 12 qualified leads"
-  },
-  {
-    id: "hist-3",
-    type: "form",
-    action: "Form Submission",
-    target: "techflow.com - Demo Request",
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Demo request submitted successfully"
-  },
-  {
-    id: "hist-4",
-    type: "analysis",
-    action: "Competitor Analysis",
-    target: "competitor.io",
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-    status: "failed",
-    details: "Website blocked automated access"
-  },
-  {
-    id: "hist-5",
-    type: "intel",
-    action: "Intel Collection",
-    target: "Pricing changes across 5 competitors",
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Collected 8 new intel records"
-  },
-  {
-    id: "hist-6",
-    type: "form",
-    action: "Form Detection",
-    target: "startup.com",
-    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Detected 3 forms on target website"
-  },
-  {
-    id: "hist-7",
-    type: "lead",
-    action: "Lead Export",
-    target: "Marketing Directors batch",
-    timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Exported 25 leads to CSV"
-  },
-  {
-    id: "hist-8",
-    type: "analysis",
-    action: "Bulk Analysis",
-    target: "5 competitor websites",
-    timestamp: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(),
-    status: "success",
-    details: "Analyzed pricing and job data for all targets"
+async function fetchCollection(name: string): Promise<any[]> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/${name}`, { cache: "no-store" })
+    const data = await res.json()
+    return data.success ? (data.data || []) : []
+  } catch {
+    return []
   }
-]
+}
+
+function normalizeHistory(raw: any[]): HistoryItem[] {
+  return raw.filter(r => r && r.id).map(r => ({
+    id: r.id,
+    type: r.type || "analysis" as const,
+    action: r.action || "Activity",
+    target: r.target || r.prompt || "",
+    timestamp: r.timestamp || r.createdAt || new Date().toISOString(),
+    status: r.status === "complete" || r.status === "success" || r.status === "done" ? "success"
+      : r.status === "error" || r.status === "failed" ? "failed"
+      : "pending",
+    details: r.details || "",
+  }))
+}
+
+function normalizeAgentHistory(raw: any[]): HistoryItem[] {
+  return raw.filter(r => r && r.id).map(r => ({
+    id: r.id,
+    type: "analysis" as const,
+    action: "Competitor Analysis",
+    target: r.prompt || r.target || "Agent Run",
+    timestamp: r.timestamp || new Date().toISOString(),
+    status: r.status === "complete" || r.status === "success" || r.status === "done" ? "success"
+      : r.status === "error" || r.status === "failed" ? "failed"
+      : "pending",
+    details: r.competitorsCount != null
+      ? `Analyzed ${r.competitorsCount} competitor${r.competitorsCount !== 1 ? "s" : ""}`
+      : (r.details || ""),
+  }))
+}
+
+function normalizeLeadgenHistory(raw: any[]): HistoryItem[] {
+  return raw.filter(r => r && r.id).map(r => ({
+    id: r.id,
+    type: "lead" as const,
+    action: "Lead Generation",
+    target: r.query || r.target || "Lead Search",
+    timestamp: r.timestamp || new Date().toISOString(),
+    status: r.status === "complete" || r.status === "success" || r.status === "done" ? "success"
+      : r.status === "error" || r.status === "failed" ? "failed"
+      : "pending",
+    details: r.leadsCount != null ? `Found ${r.leadsCount} leads` : (r.details || ""),
+  }))
+}
+
+function normalizeFormHistory(raw: any[]): HistoryItem[] {
+  return raw.filter(r => r && r.id).map(r => ({
+    id: r.id,
+    type: "form" as const,
+    action: r.formType ? `Form Fill — ${r.formType}` : "Form Submission",
+    target: r.companyName || r.company || r.url || r.target || "Form",
+    timestamp: r.timestamp || new Date().toISOString(),
+    status: r.status === "complete" || r.status === "success" ? "success"
+      : r.status === "error" || r.status === "failed" ? "failed"
+      : "pending",
+    details: r.details || "",
+  }))
+}
+
+function normalizeStrategyHistory(raw: any[]): HistoryItem[] {
+  const toolLabels: Record<string, string> = {
+    market: "Market Breakdown",
+    distribution: "Distribution Plan",
+    weakness: "Competitor Weakness Map",
+  }
+  return raw.filter(r => r && r.id).map(r => ({
+    id: r.id,
+    type: "intel" as const,
+    action: toolLabels[r.tool] || r.tool || "Strategy Analysis",
+    target: r.input || r.target || "",
+    timestamp: r.timestamp || new Date().toISOString(),
+    status: r.status === "complete" || r.status === "success" || r.status === "done" ? "success"
+      : r.status === "error" || r.status === "failed" ? "failed"
+      : "pending",
+    details: r.details || "",
+  }))
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -93,7 +106,33 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const limit = parseInt(searchParams.get("limit") || "50")
 
-    let results = [...mockHistory]
+    // Fetch all history collections from the Express backend store
+    const [history, agentHistory, leadgenHistory, formHistory, fillHistory, strategyHistory] = await Promise.all([
+      fetchCollection("history"),
+      fetchCollection("agentHistory"),
+      fetchCollection("leadgenHistory"),
+      fetchCollection("formHistory"),
+      fetchCollection("fillHistory"),
+      fetchCollection("strategyHistory"),
+    ])
+
+    // Normalize all into HistoryItem format
+    let results: HistoryItem[] = [
+      ...normalizeHistory(history),
+      ...normalizeAgentHistory(agentHistory),
+      ...normalizeLeadgenHistory(leadgenHistory),
+      ...normalizeFormHistory(formHistory),
+      ...normalizeFormHistory(fillHistory),
+      ...normalizeStrategyHistory(strategyHistory),
+    ]
+
+    // Deduplicate by id
+    const seen = new Set<string>()
+    results = results.filter(r => {
+      if (seen.has(r.id)) return false
+      seen.add(r.id)
+      return true
+    })
 
     // Filter by type
     if (type && type !== "all") {
@@ -110,21 +149,22 @@ export async function GET(request: NextRequest) {
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     )
 
-    // Apply limit
-    results = results.slice(0, limit)
-
-    // Calculate stats
+    // Calculate stats before slicing
+    const allResults = results
     const stats = {
-      total: mockHistory.length,
-      success: mockHistory.filter(h => h.status === "success").length,
-      failed: mockHistory.filter(h => h.status === "failed").length,
+      total: allResults.length,
+      success: allResults.filter(h => h.status === "success").length,
+      failed: allResults.filter(h => h.status === "failed").length,
       byType: {
-        analysis: mockHistory.filter(h => h.type === "analysis").length,
-        lead: mockHistory.filter(h => h.type === "lead").length,
-        form: mockHistory.filter(h => h.type === "form").length,
-        intel: mockHistory.filter(h => h.type === "intel").length
+        analysis: allResults.filter(h => h.type === "analysis").length,
+        lead: allResults.filter(h => h.type === "lead").length,
+        form: allResults.filter(h => h.type === "form").length,
+        intel: allResults.filter(h => h.type === "intel").length
       }
     }
+
+    // Apply limit
+    results = results.slice(0, limit)
 
     return NextResponse.json({
       items: results,
@@ -163,7 +203,27 @@ export async function POST(request: NextRequest) {
       details
     }
 
-    mockHistory.unshift(newItem)
+    // Determine backend collection based on type
+    const collectionMap: Record<string, string> = {
+      lead: "leadgenHistory",
+      form: "fillHistory",
+      intel: "strategyHistory",
+      analysis: "history",
+    }
+    const collection = collectionMap[type] || "history"
+
+    // Fetch existing data, prepend new item, save back
+    try {
+      const existing = await fetchCollection(collection)
+      const updated = [newItem, ...existing]
+      await fetch(`${BACKEND_URL}/${collection}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: updated }),
+      })
+    } catch (e) {
+      console.warn("Failed to persist history to backend:", e)
+    }
 
     return NextResponse.json({
       item: newItem,
@@ -184,7 +244,17 @@ export async function DELETE(request: NextRequest) {
     const clearAll = searchParams.get("clearAll")
 
     if (clearAll === "true") {
-      mockHistory.length = 0
+      // Clear all history collections in the backend
+      const collections = ["history", "agentHistory", "leadgenHistory", "formHistory", "fillHistory", "strategyHistory"]
+      await Promise.all(
+        collections.map(col =>
+          fetch(`${BACKEND_URL}/${col}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: [] }),
+          }).catch(() => {})
+        )
+      )
       return NextResponse.json({
         message: "History cleared successfully"
       })
