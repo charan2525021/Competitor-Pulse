@@ -75,6 +75,19 @@ Make the data realistic - use common names, proper email formats (firstname.last
       }
     }
 
+    // Enrich each lead with email suggestions
+    if (leadsData.leads) {
+      leadsData.leads = leadsData.leads.map((lead: Record<string, unknown>) => {
+        const suggestions = generateEmailSuggestions(String(lead.name || ""), String(lead.company || company))
+        return {
+          ...lead,
+          email: suggestions[0]?.email || lead.email || "",
+          emailConfidence: suggestions[0]?.confidence || lead.emailConfidence || 0,
+          emailSuggestions: suggestions,
+        }
+      })
+    }
+
     // Save leads to database if user is authenticated
     if (user && leadsData.leads) {
       const leadsToInsert = leadsData.leads.map((lead: Record<string, unknown>) => ({
@@ -152,4 +165,30 @@ export async function GET(request: NextRequest) {
     console.error("Fetch leads error:", error)
     return NextResponse.json({ error: "Failed to fetch leads" }, { status: 500 })
   }
+}
+
+function generateEmailSuggestions(name: string, company: string) {
+  const parts = name.toLowerCase().split(/\s+/)
+  const first = parts[0] || "user"
+  const last = parts.slice(1).join("") || ""
+  const firstInitial = first[0] || ""
+  const cleaned = company.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().replace(/\s+/g, "")
+  const domain = cleaned + ".com"
+
+  const suggestions: { email: string; confidence: number; pattern: string }[] = []
+
+  if (last) {
+    suggestions.push(
+      { email: `${first}.${last}@${domain}`, confidence: 92, pattern: "first.last" },
+      { email: `${first}${last}@${domain}`, confidence: 78, pattern: "firstlast" },
+      { email: `${firstInitial}${last}@${domain}`, confidence: 72, pattern: "flast" },
+      { email: `${last}.${first}@${domain}`, confidence: 55, pattern: "last.first" },
+      { email: `${first}_${last}@${domain}`, confidence: 48, pattern: "first_last" },
+      { email: `${first}@${domain}`, confidence: 35, pattern: "first" },
+    )
+  } else {
+    suggestions.push({ email: `${first}@${domain}`, confidence: 65, pattern: "first" })
+  }
+
+  return suggestions.filter(s => s.email.includes("@"))
 }

@@ -3,12 +3,16 @@ import {
   saveSenderIdentity,
   getSenderIdentities,
   deleteSenderIdentity,
+  updateSenderIdentity,
   createCampaign,
   getCampaigns,
   getCampaign,
   deleteCampaign,
   sendCampaign,
   getCampaignLogs,
+  updateCampaign,
+  addCampaignRecipients,
+  removeRecipient,
 } from "../services/outreach.service";
 
 // ── Sender Identity ──
@@ -17,10 +21,6 @@ export function handleSaveSender(req: Request, res: Response) {
   const { fromName, fromEmail, useGmailSmtp, gmailAppPassword } = req.body;
   if (!fromName || !fromEmail) {
     res.status(400).json({ success: false, error: "fromName and fromEmail are required" });
-    return;
-  }
-  if (useGmailSmtp && !gmailAppPassword) {
-    res.status(400).json({ success: false, error: "Gmail App Password is required when Gmail SMTP is enabled" });
     return;
   }
   const identity = saveSenderIdentity(fromName, fromEmail, !!useGmailSmtp, gmailAppPassword);
@@ -35,6 +35,17 @@ export function handleGetSenders(_req: Request, res: Response) {
 export function handleDeleteSender(req: Request, res: Response) {
   deleteSenderIdentity(req.params.id as string);
   res.json({ success: true });
+}
+
+export function handleUpdateSender(req: Request, res: Response) {
+  const { fromName, fromEmail, useGmailSmtp, gmailAppPassword } = req.body;
+  if (!fromName || !fromEmail) {
+    res.status(400).json({ success: false, error: "fromName and fromEmail are required" });
+    return;
+  }
+  const updated = updateSenderIdentity(req.params.id as string, fromName, fromEmail, !!useGmailSmtp, gmailAppPassword);
+  if (!updated) { res.status(404).json({ success: false, error: "Sender not found" }); return; }
+  res.json({ success: true, sender: { ...updated, gmailAppPassword: updated.gmailAppPassword ? "••••••••" : undefined } });
 }
 
 // ── Campaigns ──
@@ -62,6 +73,29 @@ export function handleGetCampaign(req: Request, res: Response) {
 export function handleDeleteCampaign(req: Request, res: Response) {
   deleteCampaign(req.params.id as string);
   res.json({ success: true });
+}
+
+export function handleUpdateCampaign(req: Request, res: Response) {
+  const { name, subject, body, senderId } = req.body;
+  const updated = updateCampaign(req.params.id as string, { name, subject, body, senderId });
+  if (!updated) { res.status(400).json({ success: false, error: "Campaign not found or already sent" }); return; }
+  res.json({ success: true, campaign: updated });
+}
+
+export function handleAddRecipients(req: Request, res: Response) {
+  const { leads } = req.body;
+  if (!leads?.length) { res.status(400).json({ success: false, error: "leads array is required" }); return; }
+  const updated = addCampaignRecipients(req.params.id as string, leads);
+  if (!updated) { res.status(400).json({ success: false, error: "Campaign not found or already sent" }); return; }
+  res.json({ success: true, campaign: updated });
+}
+
+export function handleRemoveRecipient(req: Request, res: Response) {
+  const { email } = req.body;
+  if (!email) { res.status(400).json({ success: false, error: "email is required" }); return; }
+  const updated = removeRecipient(req.params.id as string, email);
+  if (!updated) { res.status(400).json({ success: false, error: "Campaign not found or currently sending" }); return; }
+  res.json({ success: true, campaign: updated });
 }
 
 export async function handleSendCampaign(req: Request, res: Response) {

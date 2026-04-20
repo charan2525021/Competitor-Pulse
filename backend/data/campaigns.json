@@ -1,0 +1,52 @@
+[
+  {
+    "id": "camp_0943cfd7",
+    "name": "test",
+    "subject": "test",
+    "body": "test",
+    "senderId": "sender_4b8a659b",
+    "status": "sent",
+    "createdAt": "2026-04-19T08:03:28.523Z",
+    "recipients": [
+      {
+        "leadId": "ee2c5f6a-5afd-4e31-a4ad-66462e581458",
+        "name": "Charan Kumar Ravula",
+        "email": "ravulacharankumar@outlook.com",
+        "company": "Unknown",
+        "status": "sent",
+        "sentAt": "2026-04-19T08:03:51.729Z"
+      }
+    ],
+    "stats": {
+      "total": 1,
+      "sent": 1,
+      "failed": 0
+    },
+    "sentAt": "2026-04-19T08:03:52.543Z"
+  },
+  {
+    "id": "camp_80b6a638",
+    "name": "Comepetor pulse",
+    "subject": "{{company}} + AI testing idea",
+    "body": "Hi {{name}},\n\nI saw that {{company}} is working on {{context/industry insight}} — and thought this might be relevant.\n\nWe’ve built an AI testing solution that:\n\n* Understands UI via accessibility snapshots\n* Generates Playwright tests automatically\n* Fixes broken tests using AI\n\nInstead of writing scripts manually, you just describe the flow — AI handles the rest.\n\nWould you be interested in trying a quick demo?\n\nBest,\nCompetor pulse\n",
+    "senderId": "sender_4b8a659b",
+    "status": "sent",
+    "createdAt": "2026-04-19T08:58:56.035Z",
+    "recipients": [
+      {
+        "leadId": "ee2c5f6a-5afd-4e31-a4ad-66462e581458",
+        "name": "Charan Kumar Ravula",
+        "email": "ravulacharankumar@outlook.com",
+        "company": "Unknown",
+        "status": "sent",
+        "sentAt": "2026-04-19T08:59:06.342Z"
+      }
+    ],
+    "stats": {
+      "total": 1,
+      "sent": 1,
+      "failed": 0
+    },
+    "sentAt": "2026-04-19T08:59:07.156Z"
+  }
+]

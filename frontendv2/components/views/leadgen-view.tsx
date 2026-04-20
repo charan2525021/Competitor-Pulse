@@ -32,15 +32,19 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  X,
 } from "lucide-react"
 import type { Lead } from "@/lib/types"
 import {
   startLeadSearch, createLeadLogStream, cancelLeadSearch,
-  saveSenderIdentity, getSenderIdentities, deleteSenderApi,
+  saveSenderIdentity, getSenderIdentities, deleteSenderApi, updateSenderApi,
   createCampaignApi, getCampaignsApi, deleteCampaignApi, sendCampaignApi, getCampaignLogsApi,
+  updateCampaignApi, addCampaignRecipientsApi, removeCampaignRecipientApi,
   loadCollection,
 } from "@/lib/api"
 import { saveLead, addHistoryItem, getLeads } from "@/lib/storage"
+import { useToast } from "@/hooks/use-toast"
 
 interface LogEntry {
   id: string
@@ -56,6 +60,17 @@ interface Sender {
   useGmailSmtp: boolean
 }
 
+interface CampaignRecipient {
+  leadId: string
+  name: string
+  email: string
+  company: string
+  role: string
+  status: "pending" | "sent" | "failed"
+  error?: string
+  sentAt?: string
+}
+
 interface Campaign {
   id: string
   name: string
@@ -63,16 +78,22 @@ interface Campaign {
   body: string
   senderId: string
   leads: any[]
+  recipients?: CampaignRecipient[]
   status?: string
   sentAt?: string
+  stats?: { total: number; sent: number; failed: number }
 }
 
 export function LeadGenView() {
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
   const [leads, setLeads] = useState<Lead[]>([])
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
   const [isSearching, setIsSearching] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null)
+  const [editingEmail, setEditingEmail] = useState("")
+  const [expandedEmailId, setExpandedEmailId] = useState<string | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [runId, setRunId] = useState<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
@@ -89,6 +110,16 @@ export function LeadGenView() {
   const [showSenderForm, setShowSenderForm] = useState(false)
   const [newCampaign, setNewCampaign] = useState({ name: "", subject: "", body: "", senderId: "" })
   const [showCampaignForm, setShowCampaignForm] = useState(false)
+  const [sendingCampaignId, setSendingCampaignId] = useState<string | null>(null)
+  const [campaignLogs, setCampaignLogs] = useState<Record<string, string[]>>({})
+  const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null)
+  const [editingSenderId, setEditingSenderId] = useState<string | null>(null)
+  const [editingSender, setEditingSender] = useState({ fromName: "", fromEmail: "" })
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
+  const [editingCampaignData, setEditingCampaignData] = useState({ name: "", subject: "", body: "", senderId: "" })
+  const [addRecipientsId, setAddRecipientsId] = useState<string | null>(null)
+  const [manualRecipient, setManualRecipient] = useState({ name: "", email: "", company: "", role: "" })
+  const [recipientSearch, setRecipientSearch] = useState("")
 
   // Load previously saved leads from localStorage on mount
   useEffect(() => {
@@ -102,6 +133,7 @@ export function LeadGenView() {
     }
     if (activeTab === "campaigns") {
       getCampaignsApi().then(res => res.success && setCampaigns(res.campaigns || []))
+      getSenderIdentities().then(res => res.success && setSenders(res.senders || []))
     }
   }, [activeTab])
 
@@ -156,6 +188,7 @@ export function LeadGenView() {
                 company: l.company || "",
                 email: l.email || "",
                 emailConfidence: l.emailConfidence || 0,
+                emailSuggestions: l.emailSuggestions || [],
                 linkedinUrl: l.linkedinUrl || "",
                 location: l.location || "",
                 industry: l.industry || "",
@@ -252,8 +285,8 @@ export function LeadGenView() {
 
   const handleAddSender = async () => {
     const res = await saveSenderIdentity(newSender.fromName, newSender.fromEmail, newSender.useGmailSmtp, newSender.gmailAppPassword || undefined)
-    if (res.success) {
-      setSenders(prev => [...prev, { id: res.id || Date.now().toString(), fromName: newSender.fromName, fromEmail: newSender.fromEmail, useGmailSmtp: newSender.useGmailSmtp }])
+    if (res.success && res.sender) {
+      setSenders(prev => [...prev, { id: res.sender.id, fromName: res.sender.fromName, fromEmail: res.sender.fromEmail, useGmailSmtp: res.sender.useGmailSmtp }])
       setNewSender({ fromName: "", fromEmail: "", gmailAppPassword: "", useGmailSmtp: false })
       setShowSenderForm(false)
     }
@@ -262,6 +295,50 @@ export function LeadGenView() {
   const handleDeleteSender = async (id: string) => {
     await deleteSenderApi(id)
     setSenders(prev => prev.filter(s => s.id !== id))
+  }
+
+  const handleEditSender = async () => {
+    if (!editingSenderId) return
+    const res = await updateSenderApi(editingSenderId, { fromName: editingSender.fromName, fromEmail: editingSender.fromEmail, useGmailSmtp: false })
+    if (res.success && res.sender) {
+      setSenders(prev => prev.map(s => s.id === editingSenderId ? { ...s, fromName: res.sender.fromName, fromEmail: res.sender.fromEmail } : s))
+      setEditingSenderId(null)
+    }
+  }
+
+  const handleEditCampaign = async () => {
+    if (!editingCampaignId) return
+    const res = await updateCampaignApi(editingCampaignId, editingCampaignData)
+    if (res.success && res.campaign) {
+      setCampaigns(prev => prev.map(c => c.id === editingCampaignId ? res.campaign : c))
+      setEditingCampaignId(null)
+    }
+  }
+
+  const handleAddManualRecipient = async (campaignId: string) => {
+    if (!manualRecipient.name || !manualRecipient.email) return
+    const res = await addCampaignRecipientsApi(campaignId, [{ id: `manual_${Date.now()}`, ...manualRecipient }])
+    if (res.success && res.campaign) {
+      setCampaigns(prev => prev.map(c => c.id === campaignId ? res.campaign : c))
+      setManualRecipient({ name: "", email: "", company: "", role: "" })
+    }
+  }
+
+  const handleAddSelectedLeadsToCampaign = async (campaignId: string) => {
+    const selectedLeadData = leads.filter(l => selectedLeads.has(l.id) && l.email)
+    if (selectedLeadData.length === 0) return
+    const res = await addCampaignRecipientsApi(campaignId, selectedLeadData)
+    if (res.success && res.campaign) {
+      setCampaigns(prev => prev.map(c => c.id === campaignId ? res.campaign : c))
+      toast({ title: "Recipients added", description: `Added ${selectedLeadData.length} lead(s) to campaign` })
+    }
+  }
+
+  const handleRemoveRecipient = async (campaignId: string, email: string) => {
+    const res = await removeCampaignRecipientApi(campaignId, email)
+    if (res.success && res.campaign) {
+      setCampaigns(prev => prev.map(c => c.id === campaignId ? res.campaign : c))
+    }
   }
 
   const handleCreateCampaign = async () => {
@@ -274,16 +351,38 @@ export function LeadGenView() {
       senderId: newCampaign.senderId,
       leads: selectedLeadData,
     })
-    if (res.success) {
-      setCampaigns(prev => [...prev, { ...newCampaign, id: res.id || Date.now().toString(), leads: selectedLeadData }])
+    if (res.success && res.campaign) {
+      setCampaigns(prev => [...prev, res.campaign])
       setNewCampaign({ name: "", subject: "", body: "", senderId: "" })
       setShowCampaignForm(false)
     }
   }
 
   const handleSendCampaign = async (id: string) => {
-    await sendCampaignApi(id)
-    setCampaigns(prev => prev.map(c => c.id === id ? { ...c, status: "sent", sentAt: new Date().toISOString() } : c))
+    setSendingCampaignId(id)
+    try {
+      const result = await sendCampaignApi(id)
+      // Fetch updated campaign with per-recipient status
+      const updated = await getCampaignsApi()
+      if (updated.success) setCampaigns(updated.campaigns || [])
+      // Fetch send logs
+      const logsRes = await getCampaignLogsApi(id)
+      if (logsRes.success) setCampaignLogs(prev => ({ ...prev, [id]: logsRes.logs || [] }))
+      setExpandedCampaignId(id)
+      if (result.success) {
+        const camp = updated.campaigns?.find((c: Campaign) => c.id === id)
+        toast({
+          title: "Campaign sent",
+          description: `${camp?.stats?.sent || 0} delivered, ${camp?.stats?.failed || 0} failed out of ${camp?.stats?.total || 0} recipients`,
+        })
+      } else {
+        toast({ title: "Campaign failed", description: result.error || "Unknown error", variant: "destructive" })
+      }
+    } catch (err: any) {
+      toast({ title: "Send error", description: err.message, variant: "destructive" })
+    } finally {
+      setSendingCampaignId(null)
+    }
   }
 
   const handleDeleteCampaign = async (id: string) => {
@@ -294,7 +393,7 @@ export function LeadGenView() {
   const getConfidenceColor = (c: number) => c >= 90 ? "text-emerald-500" : c >= 75 ? "text-amber-500" : "text-rose-500"
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -317,7 +416,6 @@ export function LeadGenView() {
       {activeTab === "search" && (
         <>
           {/* Search */}
-          <ScrollReveal delay={100}>
             <Card>
               <CardContent className="p-6">
                 <div className="flex gap-3">
@@ -344,7 +442,6 @@ export function LeadGenView() {
                 </div>
               </CardContent>
             </Card>
-          </ScrollReveal>
 
           {/* Live Logs */}
           {(isSearching || logs.length > 0) && (
@@ -358,7 +455,6 @@ export function LeadGenView() {
 
           {/* Results */}
           {leads.length > 0 && (
-            <ScrollReveal delay={200}>
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -423,26 +519,117 @@ export function LeadGenView() {
                           <MapPin className="h-3 w-3" /> {lead.location}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-mono">{lead.email}</span>
-                              <button onClick={() => copyEmail(lead.email || "")} className="text-muted-foreground hover:text-foreground">
-                                {copiedEmail === lead.email ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                              </button>
-                            </div>
-                            <span className={cn("text-xs font-medium", getConfidenceColor(lead.emailConfidence || 0))}>
-                              {lead.emailConfidence}% confidence
-                            </span>
-                          </div>
+                        <div className="flex flex-col items-end gap-1 relative">
+                          {editingLeadId === lead.id ? (
+                              <div className="flex items-center gap-1.5">
+                                <Input
+                                  type="email"
+                                  value={editingEmail}
+                                  onChange={(e) => setEditingEmail(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && editingEmail) {
+                                      setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, email: editingEmail, emailConfidence: 100, emailSuggestions: l.emailSuggestions } : l))
+                                      setEditingLeadId(null)
+                                    }
+                                    if (e.key === "Escape") setEditingLeadId(null)
+                                  }}
+                                  className="h-7 w-52 text-xs"
+                                  autoFocus
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => {
+                                    if (editingEmail) {
+                                      setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, email: editingEmail, emailConfidence: 100, emailSuggestions: l.emailSuggestions } : l))
+                                    }
+                                    setEditingLeadId(null)
+                                  }}
+                                >
+                                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setEditingLeadId(null)}>
+                                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                </Button>
+                              </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-mono">{lead.email || "No email"}</span>
+                                {lead.emailConfidence != null && lead.emailConfidence > 0 && (
+                                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getConfidenceColor(lead.emailConfidence))}>
+                                    {lead.emailConfidence}%
+                                  </Badge>
+                                )}
+                                <button
+                                  onClick={() => { setEditingLeadId(lead.id); setEditingEmail(lead.email || "") }}
+                                  className="text-muted-foreground hover:text-foreground"
+                                  title="Edit email"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                {lead.email && (
+                                  <button onClick={() => copyEmail(lead.email || "")} className="text-muted-foreground hover:text-foreground">
+                                    {copiedEmail === lead.email ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                                  </button>
+                                )}
+                              </div>
+                              {(lead.emailSuggestions?.length ?? 0) > 1 && (
+                                <button
+                                  onClick={() => setExpandedEmailId(expandedEmailId === lead.id ? null : lead.id)}
+                                  className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1"
+                                >
+                                  {expandedEmailId === lead.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                                  {lead.emailSuggestions!.length - 1} more suggestion{lead.emailSuggestions!.length - 1 !== 1 ? "s" : ""}
+                                </button>
+                              )}
+                              {expandedEmailId === lead.id && lead.emailSuggestions && (
+                                <div className="absolute top-full right-0 mt-1 z-20 bg-popover border rounded-lg shadow-lg p-2 min-w-[280px]">
+                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">Email Suggestions</p>
+                                  {lead.emailSuggestions.map((s, si) => (
+                                    <button
+                                      key={si}
+                                      onClick={() => {
+                                        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, email: s.email, emailConfidence: s.confidence } : l))
+                                        setExpandedEmailId(null)
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center justify-between gap-3 px-2 py-1.5 rounded text-left hover:bg-muted/70 transition-colors",
+                                        s.email === lead.email && "bg-primary/10"
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        {s.email === lead.email && <Check className="h-3 w-3 text-primary shrink-0" />}
+                                        <span className="text-xs font-mono truncate">{s.email}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <span className="text-[10px] text-muted-foreground">{s.pattern}</span>
+                                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getConfidenceColor(s.confidence))}>
+                                          {s.confidence}%
+                                        </Badge>
+                                      </div>
+                                    </button>
+                                  ))}
+                                  <div className="border-t mt-1.5 pt-1.5">
+                                    <button
+                                      onClick={() => { setEditingLeadId(lead.id); setEditingEmail(lead.email || ""); setExpandedEmailId(null) }}
+                                      className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-left hover:bg-muted/70 transition-colors text-xs text-muted-foreground"
+                                    >
+                                      <Pencil className="h-3 w-3" /> Enter custom email
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            </ScrollReveal>
           )}
 
           {/* Collapsible History */}
@@ -595,15 +782,9 @@ export function LeadGenView() {
                     <Input placeholder="From Name" value={newSender.fromName} onChange={e => setNewSender({...newSender, fromName: e.target.value})} />
                     <Input placeholder="From Email" type="email" value={newSender.fromEmail} onChange={e => setNewSender({...newSender, fromEmail: e.target.value})} />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={newSender.useGmailSmtp} onChange={e => setNewSender({...newSender, useGmailSmtp: e.target.checked})} className="rounded" />
-                      Use Gmail SMTP
-                    </label>
-                    {newSender.useGmailSmtp && (
-                      <Input placeholder="Gmail App Password" type="password" value={newSender.gmailAppPassword} onChange={e => setNewSender({...newSender, gmailAppPassword: e.target.value})} className="flex-1" />
-                    )}
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    SMTP credentials are configured via environment variables (SMTP_USER, SMTP_PASS in .env). No need to enter them here.
+                  </p>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowSenderForm(false)}>Cancel</Button>
                     <Button size="sm" onClick={handleAddSender} disabled={!newSender.fromName || !newSender.fromEmail}>Save</Button>
@@ -618,21 +799,38 @@ export function LeadGenView() {
                   </div>
                 ) : senders.map((sender) => (
                   <div key={sender.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary" />
+                    {editingSenderId === sender.id ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <Input className="h-8 text-sm" placeholder="Name" value={editingSender.fromName} onChange={e => setEditingSender({ ...editingSender, fromName: e.target.value })} />
+                        <Input className="h-8 text-sm" placeholder="Email" value={editingSender.fromEmail} onChange={e => setEditingSender({ ...editingSender, fromEmail: e.target.value })} />
+                        <Button size="sm" className="h-8" onClick={handleEditSender}><Check className="h-3 w-3" /></Button>
+                        <Button variant="ghost" size="sm" className="h-8" onClick={() => setEditingSenderId(null)}><X className="h-3 w-3" /></Button>
                       </div>
-                      <div>
-                        <p className="font-medium">{sender.fromName}</p>
-                        <p className="text-sm text-muted-foreground">{sender.fromEmail}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {sender.useGmailSmtp && <Badge variant="outline" className="text-xs">Gmail SMTP</Badge>}
-                      <Button variant="ghost" size="sm" onClick={() => handleDeleteSender(sender.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{sender.fromName}</p>
+                            <p className="text-sm text-muted-foreground">{sender.fromEmail}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {sender.useGmailSmtp && <Badge variant="outline" className="text-xs">Gmail SMTP</Badge>}
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setEditingSenderId(sender.id)
+                            setEditingSender({ fromName: sender.fromName, fromEmail: sender.fromEmail })
+                          }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteSender(sender.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -689,28 +887,232 @@ export function LeadGenView() {
                     <p>No campaigns yet</p>
                   </div>
                 ) : campaigns.map((campaign) => (
-                  <div key={campaign.id} className="p-4 rounded-lg border bg-card space-y-2">
+                  <div key={campaign.id} className="p-4 rounded-lg border bg-card space-y-3">
+                    {/* Inline edit form */}
+                    {editingCampaignId === campaign.id ? (
+                      <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                        <Input placeholder="Campaign Name" value={editingCampaignData.name} onChange={e => setEditingCampaignData({...editingCampaignData, name: e.target.value})} />
+                        <Input placeholder="Email Subject" value={editingCampaignData.subject} onChange={e => setEditingCampaignData({...editingCampaignData, subject: e.target.value})} />
+                        <textarea
+                          className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          placeholder="Email body (use {{name}}, {{company}}, {{first_name}} for personalization)"
+                          value={editingCampaignData.body}
+                          onChange={e => setEditingCampaignData({...editingCampaignData, body: e.target.value})}
+                        />
+                        <select
+                          value={editingCampaignData.senderId}
+                          onChange={e => setEditingCampaignData({...editingCampaignData, senderId: e.target.value})}
+                          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                          <option value="">Select sender...</option>
+                          {senders.map(s => <option key={s.id} value={s.id}>{s.fromName} ({s.fromEmail})</option>)}
+                        </select>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setEditingCampaignId(null)}>Cancel</Button>
+                          <Button size="sm" onClick={handleEditCampaign}>Save Changes</Button>
+                        </div>
+                      </div>
+                    ) : (
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium">{campaign.name}</h4>
-                        <p className="text-sm text-muted-foreground">{campaign.subject} &middot; {campaign.leads?.length || 0} recipients</p>
+                        <p className="text-sm text-muted-foreground">{campaign.subject} &middot; {campaign.recipients?.length || campaign.leads?.length || 0} recipients</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className={cn(
-                          campaign.status === "sent" ? "text-emerald-500 border-emerald-500/30" : "text-amber-500 border-amber-500/30"
+                          campaign.status === "sent" ? "text-emerald-500 border-emerald-500/30" :
+                          campaign.status === "failed" ? "text-rose-500 border-rose-500/30" :
+                          campaign.status === "sending" ? "text-blue-500 border-blue-500/30" :
+                          "text-amber-500 border-amber-500/30"
                         )}>
-                          {campaign.status === "sent" ? "Sent" : "Draft"}
+                          {campaign.status === "sent" ? "Sent" : campaign.status === "failed" ? "Failed" : campaign.status === "sending" ? "Sending..." : "Draft"}
                         </Badge>
-                        {campaign.status !== "sent" && (
-                          <Button size="sm" onClick={() => handleSendCampaign(campaign.id)}>
-                            <Send className="mr-2 h-3 w-3" /> Send
-                          </Button>
+                        {campaign.status !== "sent" && campaign.status !== "sending" && (
+                          <>
+                            <Button size="sm" onClick={() => handleSendCampaign(campaign.id)} disabled={sendingCampaignId === campaign.id}>
+                              {sendingCampaignId === campaign.id ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <Send className="mr-2 h-3 w-3" />}
+                              {sendingCampaignId === campaign.id ? "Sending..." : "Send"}
+                            </Button>
+                          </>
                         )}
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          setEditingCampaignId(campaign.id)
+                          setEditingCampaignData({ name: campaign.name, subject: campaign.subject, body: campaign.body || "", senderId: campaign.senderId || "" })
+                        }}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setExpandedCampaignId(expandedCampaignId === campaign.id ? null : campaign.id)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => handleDeleteCampaign(campaign.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
+                    )}
+
+                    {/* Stats bar */}
+                    {campaign.stats && (campaign.status === "sent" || campaign.status === "failed") && (
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground">Total: <strong>{campaign.stats.total}</strong></span>
+                        <span className="text-emerald-500">Delivered: <strong>{campaign.stats.sent}</strong></span>
+                        <span className="text-rose-500">Failed: <strong>{campaign.stats.failed}</strong></span>
+                        {campaign.sentAt && <span className="text-muted-foreground text-xs">Sent {new Date(campaign.sentAt).toLocaleString()}</span>}
+                      </div>
+                    )}
+
+                    {/* Expanded details: per-recipient status + logs */}
+                    {expandedCampaignId === campaign.id && (
+                      <div className="space-y-3 pt-2 border-t">
+                        {/* Per-recipient list with search and delete */}
+                        {campaign.recipients && campaign.recipients.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                Recipients ({campaign.recipients.length})
+                              </p>
+                            </div>
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <Input
+                                className="h-8 text-sm pl-8"
+                                placeholder="Search recipients by name or email..."
+                                value={recipientSearch}
+                                onChange={e => setRecipientSearch(e.target.value)}
+                              />
+                            </div>
+                            <div className="max-h-56 overflow-y-auto space-y-1">
+                              {campaign.recipients
+                                .filter(r => {
+                                  if (!recipientSearch) return true
+                                  const q = recipientSearch.toLowerCase()
+                                  return r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q) || (r.company || "").toLowerCase().includes(q)
+                                })
+                                .map((r) => (
+                                <div key={r.leadId} className="flex items-center justify-between text-sm px-2 py-1.5 rounded bg-muted/50 group">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className={cn(
+                                      "h-2 w-2 rounded-full shrink-0",
+                                      r.status === "sent" ? "bg-emerald-500" : r.status === "failed" ? "bg-rose-500" : "bg-amber-500"
+                                    )} />
+                                    <span className="font-medium truncate">{r.name}</span>
+                                    <span className="text-muted-foreground truncate">&lt;{r.email}&gt;</span>
+                                    {r.company && <span className="text-xs text-muted-foreground hidden sm:inline">· {r.company}</span>}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Badge variant="outline" className={cn(
+                                      "text-xs",
+                                      r.status === "sent" ? "text-emerald-500 border-emerald-500/30" :
+                                      r.status === "failed" ? "text-rose-500 border-rose-500/30" :
+                                      "text-amber-500 border-amber-500/30"
+                                    )}>
+                                      {r.status === "sent" ? "Delivered" : r.status === "failed" ? "Failed" : "Pending"}
+                                    </Badge>
+                                    {r.sentAt && <span className="text-xs text-muted-foreground">{new Date(r.sentAt).toLocaleTimeString()}</span>}
+                                    {campaign.status !== "sending" && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={() => handleRemoveRecipient(campaign.id, r.email)}
+                                      >
+                                        <X className="h-3 w-3 text-muted-foreground hover:text-rose-500" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            {campaign.recipients.some(r => r.status === "failed" && r.error) && (
+                              <div className="mt-2 space-y-1">
+                                <p className="text-xs font-medium text-rose-500">Errors:</p>
+                                {campaign.recipients.filter(r => r.status === "failed" && r.error).map(r => (
+                                  <p key={r.leadId} className="text-xs text-rose-400 pl-2">{r.name}: {r.error}</p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* SMTP Logs */}
+                        {campaignLogs[campaign.id] && campaignLogs[campaign.id].length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Send Logs</p>
+                            <div className="max-h-40 overflow-y-auto rounded bg-muted/50 p-2 font-mono text-xs space-y-0.5">
+                              {campaignLogs[campaign.id].map((log, i) => (
+                                <p key={i} className={cn(
+                                  log.includes("✓") ? "text-emerald-500" : log.includes("✗") || log.includes("failed") ? "text-rose-500" : "text-muted-foreground"
+                                )}>{log}</p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fetch logs button if not loaded yet */}
+                        {!campaignLogs[campaign.id] && (campaign.status === "sent" || campaign.status === "failed") && (
+                          <Button variant="outline" size="sm" onClick={async () => {
+                            const logsRes = await getCampaignLogsApi(campaign.id)
+                            if (logsRes.success) setCampaignLogs(prev => ({ ...prev, [campaign.id]: logsRes.logs || [] }))
+                          }}>
+                            <Eye className="mr-2 h-3 w-3" /> Load Send Logs
+                          </Button>
+                        )}
+
+                        {/* Add Recipients section */}
+                        {campaign.status !== "sending" && (
+                          <div className="space-y-2 pt-2 border-t">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add Recipients</p>
+
+                            {/* Add from search results */}
+                            {leads.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">From search results ({selectedLeads.size} selected):</p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={selectedLeads.size === 0}
+                                  onClick={() => handleAddSelectedLeadsToCampaign(campaign.id)}
+                                >
+                                  <UserPlus className="mr-2 h-3 w-3" /> Add {selectedLeads.size} Selected Lead{selectedLeads.size !== 1 ? "s" : ""}
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Manual recipient entry */}
+                            <div className="flex items-center gap-2">
+                              <Input
+                                className="h-8 text-sm"
+                                placeholder="Name"
+                                value={addRecipientsId === campaign.id ? manualRecipient.name : ""}
+                                onFocus={() => setAddRecipientsId(campaign.id)}
+                                onChange={e => {
+                                  setAddRecipientsId(campaign.id)
+                                  setManualRecipient({ ...manualRecipient, name: e.target.value })
+                                }}
+                              />
+                              <Input
+                                className="h-8 text-sm"
+                                placeholder="Email"
+                                value={addRecipientsId === campaign.id ? manualRecipient.email : ""}
+                                onFocus={() => setAddRecipientsId(campaign.id)}
+                                onChange={e => {
+                                  setAddRecipientsId(campaign.id)
+                                  setManualRecipient({ ...manualRecipient, email: e.target.value })
+                                }}
+                              />
+                              <Button
+                                size="sm"
+                                className="h-8"
+                                disabled={!manualRecipient.name || !manualRecipient.email || addRecipientsId !== campaign.id}
+                                onClick={() => handleAddManualRecipient(campaign.id)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

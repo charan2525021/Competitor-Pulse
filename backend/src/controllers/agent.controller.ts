@@ -5,7 +5,7 @@ import { setLLMConfig } from "../llm/groq.client";
 import { executeIntelPlan } from "../services/agent.orchestrator";
 import type { CompetitorIntel } from "../services/agent.orchestrator";
 import { cancelTinyFishRun } from "../services/tinyfish.service";
-import { appendToStore } from "../services/store";
+import { appendToStore, loadStore } from "../services/store";
 
 // In-memory store per run 
 const runStore = new Map<string, {
@@ -15,6 +15,26 @@ const runStore = new Map<string, {
   abortController?: AbortController;
   tinyFishRunIds: string[];
 }>();
+
+// Hydrate runStore from persisted agentHistory so dashboard survives restarts
+try {
+  const history = loadStore<any[]>("agentHistory", []);
+  for (const entry of history) {
+    if (entry.id && Array.isArray(entry.reports)) {
+      runStore.set(entry.id, {
+        logs: [],
+        done: true,
+        reports: entry.reports,
+        tinyFishRunIds: [],
+      });
+    }
+  }
+  if (history.length > 0) {
+    console.log(`[Agent] Restored ${history.length} past runs from agentHistory`);
+  }
+} catch (e) {
+  console.warn("[Agent] Failed to hydrate runStore:", (e as Error).message);
+}
 
 export async function startAgent(req: Request, res: Response) {
   const { prompt, filters, llm, tinyfishApiKey } = req.body;

@@ -134,7 +134,7 @@ function AppContent() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="h-full p-6">
+        <div className="min-h-full p-6">
           {renderView()}
         </div>
       </main>

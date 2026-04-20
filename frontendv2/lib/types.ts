@@ -37,6 +37,12 @@ export interface ReviewData {
   topPraises: string[]
 }
 
+export interface EmailSuggestion {
+  email: string
+  confidence: number
+  pattern: string
+}
+
 export interface Lead {
   id: string
   name: string
@@ -44,6 +50,7 @@ export interface Lead {
   company: string
   email?: string
   emailConfidence?: number
+  emailSuggestions?: EmailSuggestion[]
   linkedinUrl?: string
   location?: string
   industry?: string

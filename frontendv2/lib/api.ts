@@ -217,6 +217,15 @@ export async function deleteSenderApi(id: string) {
   return res.json();
 }
 
+export async function updateSenderApi(id: string, data: { fromName: string; fromEmail: string; useGmailSmtp: boolean; gmailAppPassword?: string }) {
+  const res = await fetch(`${API_BASE}/outreach/senders/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
 export async function createCampaignApi(data: {
   name: string; subject: string; body: string;
   senderId: string; leads: any[];
@@ -246,5 +255,32 @@ export async function sendCampaignApi(id: string) {
 
 export async function getCampaignLogsApi(id: string) {
   const res = await fetch(`${API_BASE}/outreach/campaigns/${id}/logs`);
+  return res.json();
+}
+
+export async function updateCampaignApi(id: string, data: { name?: string; subject?: string; body?: string; senderId?: string }) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function addCampaignRecipientsApi(id: string, leads: any[]) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns/${id}/recipients`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ leads }),
+  });
+  return res.json();
+}
+
+export async function removeCampaignRecipientApi(id: string, email: string) {
+  const res = await fetch(`${API_BASE}/outreach/campaigns/${id}/recipients`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
   return res.json();
 }

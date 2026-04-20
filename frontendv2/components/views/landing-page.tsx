@@ -190,11 +190,27 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     })
   }, [])
 
-  const handleContactSubmit = (e: React.FormEvent) => {
+  const [contactSending, setContactSending] = useState(false)
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setContactSent(true)
-    setTimeout(() => setContactSent(false), 3000)
-    setContactForm({ name: "", email: "", message: "" })
+    setContactSending(true)
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(contactForm),
+      })
+      if (res.ok) {
+        setContactSent(true)
+        setTimeout(() => setContactSent(false), 3000)
+        setContactForm({ name: "", email: "", message: "" })
+      }
+    } catch (err) {
+      console.error("Failed to send message:", err)
+    } finally {
+      setContactSending(false)
+    }
   }
 
   const features = [
@@ -249,13 +265,18 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       highlight: false,
     },
     {
-      name: "Pro", price: "$49", period: "/month", desc: "For teams serious about competitive intelligence.",
-      features: ["Unlimited scans", "All intel categories", "Form filler & lead gen", "AI strategy engine", "Priority support", "Data export"],
+      name: "Pro", price: "$79", period: "/month", desc: "For teams serious about competitive intelligence.",
+      features: ["50 scans/day", "All intel categories", "Form filler & lead gen", "AI strategy engine", "Email campaigns", "Priority support", "Data export"],
       highlight: true,
     },
     {
+      name: "Business", price: "$249", period: "/month", desc: "For growing teams that need scale and advanced features.",
+      features: ["Unlimited scans", "Everything in Pro", "Custom AI models", "Advanced lead generation", "API access", "Dedicated support", "Team collaboration"],
+      highlight: false,
+    },
+    {
       name: "Enterprise", price: "Custom", period: "", desc: "For organizations with advanced security and scale needs.",
-      features: ["Everything in Pro", "Custom integrations", "SSO & SAML", "Dedicated account manager", "SLA guarantee", "On-premise option"],
+      features: ["Everything in Business", "Custom integrations", "SSO & SAML", "Dedicated account manager", "SLA guarantee", "On-premise option"],
       highlight: false,
     },
   ]
@@ -760,18 +781,6 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
         </div>
       </section>
 
-      {/* Tech Stack */}
-      <section className="py-8 border-y border-border/50 bg-muted/30">
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <p className="text-sm text-muted-foreground mb-4">Powered by cutting-edge AI technology</p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {["React 19", "TypeScript", "TinyFish API", "Groq LLM", "SSE Streaming", "Next.js"].map((t) => (
-              <Badge key={t} variant="outline">{t}</Badge>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Features */}
       <section id="features" className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
@@ -866,7 +875,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <h2 className="text-3xl font-bold mb-3">Simple, Transparent Pricing</h2>
             <p className="text-muted-foreground">Start free. Scale as you grow.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {plans.map((plan, i) => (
               <ScrollReveal key={plan.name} delay={i * 120}>
                 <Card className={`h-full relative ${plan.highlight ? "border-primary shadow-lg shadow-primary/10" : ""}`}>
@@ -914,9 +923,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="space-y-6">
               {[
-                { icon: Mail, title: "Email Us", value: "hello@competitorpulse.ai" },
-                { icon: Phone, title: "Call Us", value: "+1 (555) 123-4567" },
-                { icon: MapPin, title: "Visit Us", value: "San Francisco, CA 94105" },
+                { icon: Mail, title: "Email Us", value: "charan.harsha25@gmail.com" },
+                { icon: Phone, title: "Call Us", value: "+91-8328340409" },
               ].map((item) => (
                 <div key={item.title} className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -953,9 +961,11 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                     value={contactForm.message}
                     onChange={(e) => setContactForm(p => ({ ...p, message: e.target.value }))}
                   />
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" className="w-full" disabled={contactSending}>
                     {contactSent ? (
                       <><CheckCircle2 className="mr-2 h-4 w-4" /> Sent!</>
+                    ) : contactSending ? (
+                      <>Sending...</>
                     ) : (
                       <><Send className="mr-2 h-4 w-4" /> Send Message</>
                     )}
